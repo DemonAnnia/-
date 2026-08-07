@@ -212,15 +212,15 @@ function removeSharedFile(fid){
 
 let doneMsgFor = {};
 function markDone(id){
-  const s = data.students.find(x=>x.id===id);
-  if(s.needsPaymentReport){
-    const d = new Date();
-    const dateStr = d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
-    doneMsgFor[id] = `Здравствуйте! Занятие с ${s.name} ${dateStr} прошло — можно оплачивать 🙂`;
-  } else {
-    doneMsgFor[id] = '✓ отмечено';
-    setTimeout(()=>{ delete doneMsgFor[id]; render(); }, 1800);
+  if(doneMsgFor[id]){
+    delete doneMsgFor[id];
+    render();
+    return;
   }
+  const s = data.students.find(x=>x.id===id);
+  const d = new Date();
+  const dateStr = d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
+  doneMsgFor[id] = `Здравствуйте! Занятие с ${s.name} ${dateStr} прошло — можно оплачивать 🙂`;
   render();
 }
 
@@ -288,7 +288,7 @@ function render(){
           ${s.format!=='Очно'?`<a class="btn ${s.callLink?'':'btn-off'}" href="${s.callLink?esc(s.callLink):'#'}" target="_blank" style="background:${s.callLink?'#1F2A3D':''};color:${s.callLink?'#fff':''}" onclick="${s.callLink?'':'return false;'}">🎥 Звонок</a>`:''}
           ${s.format!=='Очно'?`<a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?accent.ink:''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>`:''}
           <a class="btn ${s.messenger?'':'btn-off'}" href="${s.messenger?esc(s.messenger):'#'}" target="_blank" style="background:${s.messenger?'#3A6EA5':''};color:${s.messenger?'#fff':''}" onclick="${s.messenger?'':'return false;'}">💬 Чат</a>
-          <button class="btn btn-done" onclick="markDone('${s.id}')">✓ Урок прошёл</button>
+          ${s.needsPaymentReport?`<button class="btn btn-done" onclick="markDone('${s.id}')">✓ Урок прошёл</button>`:''}
         </div>
         <button class="btn" style="width:100%;margin-top:8px;background:${accent.soft};color:${accent.ink};border:1px solid ${accent.soft};" onclick="toggleStudentMsg('${s.id}')">📨 Сообщение ученику со ссылками</button>
         ${msg?`<div class="msgbox"><div style="flex:1;">${esc(msg)}</div>${s.needsPaymentReport?`<button class="iconbtn" onclick="copyText('${esc(msg)}', this)">⧉</button>`:''}</div>`:''}
