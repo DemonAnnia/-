@@ -1,4 +1,4 @@
-const CACHE_NAME = "kabinet-repetitora-v1";
+const CACHE_NAME = "kabinet-repetitora-v2";
 const ASSETS = [
   "./index.html",
   "./manifest.json",
@@ -23,19 +23,19 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// cache-first for the app shell, falling back to network, so the app opens even offline
+// network-first: always try to get the freshest version when online,
+// and only fall back to the cached copy when there's no connection
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
+    fetch(event.request)
+      .then((response) => {
         if (response.ok && event.request.url.startsWith(self.location.origin)) {
           const copy = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
         }
         return response;
-      }).catch(() => cached);
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });
