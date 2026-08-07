@@ -257,7 +257,7 @@ function deleteStudent(id){
   save();
 }
 function addStudent(){
-  data.students.push({id:uid(), name:'Новый ученик', grade:'', format:'Онлайн',
+  data.students.push({id:uid(), name:'Новый ученик', grade:'', format: activeTab==='inperson' ? 'Очно' : 'Онлайн',
     accent: data.students.length % ACCENTS.length, messengers:[], boardLink:'', callLink:'',
     needsPaymentReport:true, subjects:[], files:[]});
   save();
@@ -418,18 +418,22 @@ function cardHTML(s){
     </div>`;
 }
 
+let activeTab = 'online';
+function setTab(tab){ activeTab = tab; render(); }
+
 function render(){
   const wrap = document.getElementById('students');
   const online = data.students.filter(s => s.format !== 'Очно');
   const inperson = data.students.filter(s => s.format === 'Очно');
-  let html = '';
-  if(online.length){
-    html += `<div class="grouptitle">💻 Онлайн</div>` + online.map(cardHTML).join('');
-  }
-  if(inperson.length){
-    html += `<div class="grouptitle">🤝 Очно</div>` + inperson.map(cardHTML).join('');
-  }
-  wrap.innerHTML = html;
+  const list = activeTab === 'online' ? online : inperson;
+
+  const tabsHtml = `
+    <div style="display:flex; gap:0.5rem; margin-bottom:0.875rem;">
+      <button onclick="setTab('online')" style="flex:1; padding:0.5rem 0; border-radius:0.625rem; font-size:0.84375rem; font-weight:700; border:1px solid ${activeTab==='online'?'#1F2A3D':'#C9D2DB'}; background:${activeTab==='online'?'#1F2A3D':'#fff'}; color:${activeTab==='online'?'#fff':'#5A6472'}; cursor:pointer;">💻 Онлайн</button>
+      <button onclick="setTab('inperson')" style="flex:1; padding:0.5rem 0; border-radius:0.625rem; font-size:0.84375rem; font-weight:700; border:1px solid ${activeTab==='inperson'?'#1F2A3D':'#C9D2DB'}; background:${activeTab==='inperson'?'#1F2A3D':'#fff'}; color:${activeTab==='inperson'?'#fff':'#5A6472'}; cursor:pointer;">🤝 Очно</button>
+    </div>`;
+
+  wrap.innerHTML = tabsHtml + (list.length ? list.map(cardHTML).join('') : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`);
 
   document.getElementById('sharedFiles').innerHTML = renderFileRows(data.sharedFiles, null, "removeSharedFile");
 }
