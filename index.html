@@ -22,9 +22,11 @@
     <input id="loginEmail" type="text" placeholder="логин (или email)" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
     <input id="loginPassword" type="password" placeholder="пароль" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
     <input id="loginInviteCode" type="text" placeholder="код приглашения (только для ученика)" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem; text-transform:uppercase;">
-    <div id="loginError" style="font-size:0.78125rem; color:#C0392B; margin-bottom:0.5rem;"></div>
     <button onclick="doLogin()" style="width:100%; padding:0.625rem 0; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-weight:600; font-size:0.875rem; margin-bottom:0.5rem; cursor:pointer;">Войти</button>
     <button onclick="doSignup()" style="width:100%; padding:0.625rem 0; border-radius:0.625rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; font-weight:600; font-size:0.875rem; cursor:pointer;">Создать аккаунт (первый раз)</button>
+    <div style="text-align:center; margin-top:0.625rem;">
+      <a href="#" onclick="doForgotPassword();return false;" style="font-size:0.78125rem; color:#5A6472;">Забыл(а) пароль?</a>
+    </div>
     <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.625rem;">Если ты ученик — впиши код приглашения от преподавателя перед созданием аккаунта. Если ты Аня — оставь это поле пустым.</div>
   </div>
 </div>
@@ -32,7 +34,8 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
-    getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    sendPasswordResetEmail
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, runTransaction, enableIndexedDbPersistence
@@ -43,6 +46,31 @@
   const auth = getAuth(fbApp);
   const db = getFirestore(fbApp);
   try { await enableIndexedDbPersistence(db); } catch (e) {}
+
+  function showToast(message, type='error', duration=10000){
+    let wrap = document.getElementById('toastWrap');
+    if(!wrap){
+      wrap = document.createElement('div');
+      wrap.id = 'toastWrap';
+      wrap.className = 'toast-wrap';
+      document.body.appendChild(wrap);
+    }
+    wrap.innerHTML = '';
+    const el = document.createElement('div');
+    el.className = 'toast ' + type;
+    const span = document.createElement('span');
+    span.style.flex = '1';
+    span.textContent = message;
+    const close = document.createElement('span');
+    close.style.opacity = '.6';
+    close.textContent = '✕';
+    el.appendChild(span); el.appendChild(close);
+    el.onclick = () => el.classList.remove('show');
+    wrap.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+  }
 
   async function claimInviteCode(code, uid) {
     const linkRef = doc(db, 'studentLinks', code);
@@ -72,12 +100,14 @@
   window.doLogin = async function () {
     const email = loginToEmail(document.getElementById('loginEmail').value);
     const pass = document.getElementById('loginPassword').value;
-    const errEl = document.getElementById('loginError');
-    errEl.textContent = '';
     try {
       await signInWithEmailAndPassword(auth, email, pass);
     } catch (e) {
-      errEl.textContent = 'Не получилось войти: ' + (e.code || e.message);
+      if (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found') {
+        showToast('Неверный логин или пароль.');
+      } else {
+        showToast('Не получилось войти: ' + (e.code || e.message));
+      }
     }
   };
 
@@ -86,23 +116,41 @@
     const email = loginToEmail(rawLogin);
     const pass = document.getElementById('loginPassword').value;
     const code = document.getElementById('loginInviteCode').value.trim().toUpperCase();
-    const errEl = document.getElementById('loginError');
-    errEl.textContent = '';
-    if (!rawLogin) { errEl.textContent = 'Впиши логин'; return; }
-    if (pass.length < 6) { errEl.textContent = 'Пароль должен быть не короче 6 символов'; return; }
+    if (!rawLogin) { showToast('Впиши логин'); return; }
+    if (pass.length < 6) { showToast('Пароль должен быть не короче 6 символов'); return; }
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
       if (code) {
         try {
           await claimInviteCode(code, cred.user.uid);
         } catch (e) {
-          errEl.textContent = 'Аккаунт создан, но код не сработал: ' + (e.message || e.code) + '. Попроси у преподавателя новый код.';
+          showToast('Аккаунт создан, но код не сработал: ' + (e.message || e.code) + '. Попроси у преподавателя новый код.');
           return;
         }
       }
       await goToRightPlace(cred.user);
     } catch (e) {
-      errEl.textContent = 'Не получилось создать аккаунт: ' + (e.code || e.message);
+      if (e.code === 'auth/email-already-in-use') {
+        showToast('Такой логин уже занят — выбери другой.');
+      } else if (e.code === 'auth/invalid-email') {
+        showToast('Логин может содержать только буквы, цифры, точку, дефис и подчёркивание.');
+      } else {
+        showToast('Не получилось создать аккаунт: ' + (e.code || e.message));
+      }
+    }
+  };
+
+  window.doForgotPassword = async function () {
+    const raw = document.getElementById('loginEmail').value.trim();
+    if (!raw.includes('@')) {
+      showToast('Для короткого логина восстановление по почте недоступно — попроси преподавателя выдать новый код приглашения и завести новый вход.');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, raw.toLowerCase());
+      showToast('Письмо со ссылкой для смены пароля отправлено на ' + raw, 'success', 6000);
+    } catch (e) {
+      showToast('Не получилось: ' + (e.code || e.message));
     }
   };
 

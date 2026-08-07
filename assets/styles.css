@@ -73,3 +73,11 @@
   .mat-pill { display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.625rem; border-radius:999px; font-size:0.75rem; font-weight:600; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer; }
   .mat-pill.picked { background:#1F2A3D; color:#fff; border-color:#1F2A3D; }
   .mat-access-chip { font-size:0.71875rem; padding:0.2rem 0.5rem; border-radius:999px; background:#EAF0F6; color:#2C4A7C; margin-right:0.25rem; display:inline-block; }
+
+  /* --- toast notifications --- */
+  .toast-wrap { position:fixed; top:0.75rem; left:0; right:0; display:flex; justify-content:center; z-index:200; pointer-events:none; padding:0 1rem; }
+  .toast { pointer-events:auto; max-width:24rem; width:100%; padding:0.75rem 1rem; border-radius:0.75rem; font-size:0.84375rem; font-weight:500; box-shadow:0 4px 16px rgba(0,0,0,0.18); display:flex; align-items:flex-start; gap:0.625rem; transform:translateY(-2rem); opacity:0; transition:transform .25s ease, opacity .25s ease; cursor:pointer; }
+  .toast.show { transform:translateY(0); opacity:1; }
+  .toast.error { background:#FBEEEC; color:#8A2A1E; border:1px solid #F0C4BC; }
+  .toast.success { background:#E2EFE6; color:#1F5C3A; border:1px solid #BFE0CC; }
+  .toast.info { background:#EAF0F6; color:#1F3A5C; border:1px solid #C7D9EC; }
