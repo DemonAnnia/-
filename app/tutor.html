@@ -19,29 +19,37 @@
 <div id="backdrop" class="backdrop" onclick="closeDrawer()"></div>
 <div id="drawer" class="drawer">
   <div class="drawer-title">📘 Меню</div>
-  <div class="drawer-section">💻 Онлайн</div>
-  <div id="drawerOnline"></div>
-  <div class="drawer-section">🤝 Очно</div>
-  <div id="drawerInperson"></div>
-  <hr class="drawer-hr">
+
   <button class="drawer-item" onclick="showStudentsView()">👥 Все ученики</button>
-  <button class="drawer-item" onclick="showMaterialsView()">📚 Материалы</button>
-  <hr class="drawer-hr">
+  <button class="drawer-item" onclick="toggleDrawerSection('online')">💻 Онлайн <span id="onlineArrow" style="margin-left:auto; opacity:.5;">▾</span></button>
+  <div id="drawerOnline"></div>
+  <button class="drawer-item" onclick="toggleDrawerSection('inperson')">🤝 Очно <span id="inpersonArrow" style="margin-left:auto; opacity:.5;">▾</span></button>
+  <div id="drawerInperson"></div>
   <button class="drawer-item" onclick="addStudent(); closeDrawer();">➕ Добавить ученика</button>
-  <button class="drawer-item" onclick="syncBaseLinks()">🔄 Обновить базовые ссылки из файла</button>
-  <button class="drawer-item" onclick="downloadBackup()">💾 Скачать резервную копию</button>
-  <button class="drawer-item" onclick="document.getElementById('restoreFile').click()">📂 Загрузить из копии</button>
-  <input id="restoreFile" type="file" accept="application/json" style="display:none;" onchange="restoreBackup(this)">
-  <button class="drawer-item" onclick="toggleAccountPanel()">⚙️ Пароль</button>
-  <div id="accountPanel" style="display:none; background:#F6F7F5; border-radius:0.625rem; padding:0.75rem; margin:0.375rem 0;">
-    <div style="font-size:0.75rem; color:#5A6472; margin-bottom:0.5rem;">Чтобы сменить пароль, подтверди текущим</div>
-    <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-    <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-    <button onclick="changePassword()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сменить пароль</button>
-  </div>
-  <button id="installBtnDrawer" class="drawer-item" style="display:none;">📲 Установить приложение</button>
+
   <hr class="drawer-hr">
-  <button class="drawer-item" onclick="doLogout()" style="color:#C0392B;">🚪 Выйти</button>
+  <button class="drawer-item" onclick="showMaterialsView()">📚 Материалы</button>
+  <button class="drawer-item" style="color:#B7BEC7; cursor:default;" onclick="showToast('Календарь занятий — в работе, скоро будет.', 'info', 4000)">📅 Календарь <span style="margin-left:auto; font-size:0.6875rem; background:#F1F3F5; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></button>
+
+  <hr class="drawer-hr">
+  <button class="drawer-item" onclick="toggleSettingsPanel()">⚙️ Настройки</button>
+  <div id="settingsPanel" style="display:none; padding-left:0.5rem;">
+    <button class="drawer-item" onclick="syncBaseLinks()">🔄 Обновить базовые ссылки из файла</button>
+    <button class="drawer-item" onclick="downloadBackup()">💾 Скачать резервную копию</button>
+    <button class="drawer-item" onclick="document.getElementById('restoreFile').click()">📂 Загрузить из копии</button>
+    <input id="restoreFile" type="file" accept="application/json" style="display:none;" onchange="restoreBackup(this)">
+    <button class="drawer-item" onclick="toggleAccountPanel()">🔑 Пароль</button>
+    <div id="accountPanel" style="display:none; background:#F6F7F5; border-radius:0.625rem; padding:0.75rem; margin:0.375rem 0;">
+      <div style="font-size:0.75rem; color:#5A6472; margin-bottom:0.5rem;">Чтобы сменить пароль, подтверди текущим</div>
+      <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <button onclick="changePassword()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сменить пароль</button>
+    </div>
+    <button class="drawer-item" onclick="doLogout()" style="color:#C0392B;">🚪 Выйти</button>
+  </div>
+
+  <hr class="drawer-hr">
+  <button id="installBtnDrawer" class="drawer-item" style="display:none;">📲 Установить приложение</button>
 </div>
 
 <div id="appRoot" style="display:none;">
@@ -390,15 +398,35 @@ function showMaterialsView(studentId){
   render();
 }
 
+let drawerOpenSection = null; // 'online' | 'inperson' | null
+function toggleDrawerSection(section){
+  drawerOpenSection = (drawerOpenSection === section) ? null : section;
+  renderDrawerLists();
+}
+
+let settingsPanelOpen = false;
+function toggleSettingsPanel(){
+  settingsPanelOpen = !settingsPanelOpen;
+  document.getElementById('settingsPanel').style.display = settingsPanelOpen ? 'block' : 'none';
+}
+
 function renderDrawerLists(){
   const online = data.students.filter(s => s.format !== 'Очно');
   const inperson = data.students.filter(s => s.format === 'Очно');
   const row = s => {
     const accent = ACCENTS[s.accent] || ACCENTS[0];
-    return `<button class="drawer-item ${focusedStudentId===s.id?'active':''}" onclick="selectStudentFromDrawer('${s.id}')"><span class="dot" style="background:${accent.ink}"></span>${esc(s.name)}</button>`;
+    return `<button class="drawer-item ${focusedStudentId===s.id?'active':''}" style="padding-left:1.5rem;" onclick="selectStudentFromDrawer('${s.id}')"><span class="dot" style="background:${accent.ink}"></span>${esc(s.name)}</button>`;
   };
-  document.getElementById('drawerOnline').innerHTML = online.length ? online.map(row).join('') : '<div style="font-size:0.78125rem;color:#9BA3AE;padding:0.375rem 0.625rem;">Пока никого</div>';
-  document.getElementById('drawerInperson').innerHTML = inperson.length ? inperson.map(row).join('') : '<div style="font-size:0.78125rem;color:#9BA3AE;padding:0.375rem 0.625rem;">Пока никого</div>';
+  const onlineEl = document.getElementById('drawerOnline');
+  const inpersonEl = document.getElementById('drawerInperson');
+  onlineEl.style.display = drawerOpenSection === 'online' ? 'block' : 'none';
+  inpersonEl.style.display = drawerOpenSection === 'inperson' ? 'block' : 'none';
+  onlineEl.innerHTML = online.length ? online.map(row).join('') : '<div style="font-size:0.78125rem;color:#9BA3AE;padding:0.375rem 0.625rem 0.375rem 1.5rem;">Пока никого</div>';
+  inpersonEl.innerHTML = inperson.length ? inperson.map(row).join('') : '<div style="font-size:0.78125rem;color:#9BA3AE;padding:0.375rem 0.625rem 0.375rem 1.5rem;">Пока никого</div>';
+  const onlineArrow = document.getElementById('onlineArrow');
+  const inpersonArrow = document.getElementById('inpersonArrow');
+  if(onlineArrow) onlineArrow.textContent = drawerOpenSection === 'online' ? '▴' : '▾';
+  if(inpersonArrow) inpersonArrow.textContent = drawerOpenSection === 'inperson' ? '▴' : '▾';
 }
 
 function togglePickerAll(){
@@ -604,6 +632,17 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     await reauthenticateWithCredential(auth.currentUser, cred);
   }
 
+  function friendlyAuthError(e){
+    const map = {
+      'auth/invalid-credential': 'Неверный текущий пароль.',
+      'auth/wrong-password': 'Неверный текущий пароль.',
+      'auth/weak-password': 'Новый пароль слишком простой — сделай его длиннее.',
+      'auth/too-many-requests': 'Слишком много попыток — подожди немного и попробуй снова.',
+      'auth/network-request-failed': 'Нет связи с интернетом — проверь подключение.',
+    };
+    return map[e && e.code] || 'Что-то пошло не так — попробуй ещё раз.';
+  }
+
   window.changePassword = async function () {
     const curPass = document.getElementById('accCurPass').value;
     const newPass = document.getElementById('accNewPass').value;
@@ -616,7 +655,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
       document.getElementById('accNewPass').value = '';
       document.getElementById('accCurPass').value = '';
     } catch (e) {
-      showToast('Не получилось: ' + (e.code || e.message));
+      showToast(friendlyAuthError(e));
     }
   };
 
