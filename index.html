@@ -150,7 +150,15 @@ function syncBaseLinks(){
     if(!base) return;
     if(base.callLink && s.callLink !== base.callLink){ s.callLink = base.callLink; changed++; }
     if(base.boardLink && s.boardLink !== base.boardLink){ s.boardLink = base.boardLink; changed++; }
-    if(base.messengers && base.messengers.length && (!s.messengers || s.messengers.length===0)){ s.messengers = base.messengers.map(m=>({...m})); changed++; }
+    if(base.messengers && base.messengers.length){
+      if(!Array.isArray(s.messengers)) s.messengers = [];
+      base.messengers.forEach(bm => {
+        if(!s.messengers.some(m => m.id === bm.id)){
+          s.messengers.push({...bm});
+          changed++;
+        }
+      });
+    }
   });
   save();
   syncMsg = changed ? `Обновлено ссылок: ${changed}` : 'Уже всё актуально';
