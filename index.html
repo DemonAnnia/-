@@ -102,17 +102,17 @@ function defaultData(){
     students: [
       {
         id: "sonya", name: "Соня", grade: "9 класс", format: "Онлайн",
-        accent: 0, messenger: "https://vk.com/im?sel=630793840", boardLink: "https://unidraw.io/app/board/83192784a1059c3a4a4c", callLink: "https://telemost.yandex.ru/j/16483728930070",
+        accent: 0, messengers: [{id:'m1', label:'ВК', url:'https://vk.com/im?sel=630793840'}], boardLink: "https://unidraw.io/app/board/83192784a1059c3a4a4c", callLink: "https://telemost.yandex.ru/j/16483728930070",
         needsPaymentReport: true,
         subjects:[{label:'Школьная программа (1 ч)', price:'1700 ₽'},{label:'Подготовка к ОГЭ (1,5 ч)', price:'2900 ₽'}], files:[]
       },
-      {id:'lera', name:'Лера', grade:'9 класс', format:'Очно', accent:1, messenger:'', boardLink:'', callLink:'', needsPaymentReport:true,
+      {id:'lera', name:'Лера', grade:'9 класс', format:'Очно', accent:1, messengers:[], boardLink:'', callLink:'', needsPaymentReport:true,
        subjects:[{label:'Школьная программа (1 ч)', price:'1150 ₽'},{label:'Подготовка к ОГЭ (1,5 ч)', price:'2000 ₽'}], files:[]},
-      {id:'ksyusha', name:'Ксюша', grade:'11 класс', format:'Онлайн', accent:2, messenger:'', boardLink:'', callLink:'', needsPaymentReport:true,
+      {id:'ksyusha', name:'Ксюша', grade:'11 класс', format:'Онлайн', accent:2, messengers:[], boardLink:'', callLink:'', needsPaymentReport:true,
        subjects:[{label:'Подготовка к ЕГЭ (1,5 ч)', price:'2650 ₽'}], files:[]},
-      {id:'nadya', name:'Надя', grade:'9 класс', format:'Очно', accent:4, messenger:'', boardLink:'', callLink:'', needsPaymentReport:false,
+      {id:'nadya', name:'Надя', grade:'9 класс', format:'Очно', accent:4, messengers:[], boardLink:'', callLink:'', needsPaymentReport:false,
        subjects:[{label:'Школьная программа (сестра)', price:'Бесплатно'}], files:[]},
-      {id:'anya8', name:'Аня', grade:'8 класс', format:'Онлайн', accent:3, messenger:'', boardLink:'', callLink:'', needsPaymentReport:true,
+      {id:'anya8', name:'Аня', grade:'8 класс', format:'Онлайн', accent:3, messengers:[], boardLink:'', callLink:'', needsPaymentReport:true,
        subjects:[{label:'Школьная программа (1 ч)', price:'1700 ₽'}], files:[]},
     ],
     sharedFiles: [],
@@ -122,10 +122,20 @@ function defaultData(){
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
+function migrate(d){
+  d.students.forEach(s => {
+    if(!Array.isArray(s.messengers)){
+      s.messengers = s.messenger ? [{id: uid(), label:'', url: s.messenger}] : [];
+    }
+    delete s.messenger;
+  });
+  return d;
+}
+
 function load(){
   try{
     const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : defaultData();
+    return raw ? migrate(JSON.parse(raw)) : defaultData();
   }catch(e){ return defaultData(); }
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){} render(); }
@@ -140,7 +150,7 @@ function syncBaseLinks(){
     if(!base) return;
     if(base.callLink && s.callLink !== base.callLink){ s.callLink = base.callLink; changed++; }
     if(base.boardLink && s.boardLink !== base.boardLink){ s.boardLink = base.boardLink; changed++; }
-    if(base.messenger && s.messenger !== base.messenger){ s.messenger = base.messenger; changed++; }
+    if(base.messengers && base.messengers.length && (!s.messengers || s.messengers.length===0)){ s.messengers = base.messengers.map(m=>({...m})); changed++; }
   });
   save();
   syncMsg = changed ? `Обновлено ссылок: ${changed}` : 'Уже всё актуально';
@@ -181,7 +191,7 @@ function deleteStudent(id){
 }
 function addStudent(){
   data.students.push({id:uid(), name:'Новый ученик', grade:'', format:'Онлайн',
-    accent: data.students.length % ACCENTS.length, messenger:'', boardLink:'', callLink:'',
+    accent: data.students.length % ACCENTS.length, messengers:[], boardLink:'', callLink:'',
     needsPaymentReport:true, subjects:[], files:[]});
   save();
 }
@@ -196,6 +206,20 @@ function addFileTo(id){
 function removeFileFrom(sid, fid){
   const s = data.students.find(x=>x.id===sid);
   s.files = s.files.filter(f=>f.id!==fid);
+  save();
+}
+function addMessenger(id){
+  const s = data.students.find(x=>x.id===id);
+  const labelEl = document.getElementById('mlabel-'+id);
+  const urlEl = document.getElementById('murl-'+id);
+  if(!urlEl.value) return;
+  s.messengers.push({id:uid(), label:labelEl.value, url:urlEl.value});
+  labelEl.value=''; urlEl.value='';
+  save();
+}
+function removeMessenger(sid, mid){
+  const s = data.students.find(x=>x.id===sid);
+  s.messengers = s.messengers.filter(m=>m.id!==mid);
   save();
 }
 function addSharedFile(){
@@ -287,7 +311,7 @@ function render(){
         <div class="row">
           ${s.format!=='Очно'?`<a class="btn ${s.callLink?'':'btn-off'}" href="${s.callLink?esc(s.callLink):'#'}" target="_blank" style="background:${s.callLink?'#1F2A3D':''};color:${s.callLink?'#fff':''}" onclick="${s.callLink?'':'return false;'}">🎥 Звонок</a>`:''}
           ${s.format!=='Очно'?`<a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?accent.ink:''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>`:''}
-          <a class="btn ${s.messenger?'':'btn-off'}" href="${s.messenger?esc(s.messenger):'#'}" target="_blank" style="background:${s.messenger?'#3A6EA5':''};color:${s.messenger?'#fff':''}" onclick="${s.messenger?'':'return false;'}">💬 Чат</a>
+          ${s.messengers.map(m=>`<a class="btn" href="${esc(m.url)}" target="_blank" style="background:#3A6EA5;color:#fff;">💬 ${esc(m.label||'Чат')}</a>`).join('')}
           ${s.needsPaymentReport?`<button class="btn btn-done" onclick="markDone('${s.id}')">✓ Урок прошёл</button>`:''}
         </div>
         <button class="btn" style="width:100%;margin-top:8px;background:${accent.soft};color:${accent.ink};border:1px solid ${accent.soft};" onclick="toggleStudentMsg('${s.id}')">📨 Сообщение ученику со ссылками</button>
@@ -302,7 +326,18 @@ function render(){
         <div style="padding-top:0;">
           ${s.format!=='Очно'?`<div class="field"><span>🎥</span><input type="text" placeholder="ссылка на звонок (Зум / Телемост)" value="${esc(s.callLink)}" onchange="updateStudent('${s.id}',{callLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.callLink)}', this)">⧉</button></div>`:''}
           ${s.format!=='Очно'?`<div class="field"><span>✏️</span><input type="text" placeholder="ссылка на доску" value="${esc(s.boardLink)}" onchange="updateStudent('${s.id}',{boardLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.boardLink)}', this)">⧉</button></div>`:''}
-          <div class="field"><span>🔗</span><input type="text" placeholder="ссылка на чат: wa.me/79001234567 или t.me/username (необязательно)" value="${esc(s.messenger)}" onchange="updateStudent('${s.id}',{messenger:this.value})">${s.messenger?`<a class="iconbtn" href="${esc(s.messenger)}" target="_blank" style="text-decoration:none;">↗</a>`:''}</div>
+          <div class="filelabel" style="margin-top:0.5rem;">Ссылки на чат (можно несколько — для ребёнка и для родителя)</div>
+          ${s.messengers.length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>' : s.messengers.map(m=>`
+            <div class="filerow">
+              <span>💬</span>
+              <a href="${esc(m.url)}" target="_blank" rel="noreferrer">${esc(m.label||m.url)}</a>
+              <button class="iconbtn" onclick="removeMessenger('${s.id}','${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+            </div>`).join('')}
+          <div class="fileadd">
+            <input class="fname" type="text" id="mlabel-${s.id}" placeholder="кому (ВК / родителю)">
+            <input class="furl" type="text" id="murl-${s.id}" placeholder="ссылка: wa.me/... или t.me/...">
+            <button class="addfilebtn" onclick="addMessenger('${s.id}')">+</button>
+          </div>
         </div>
         <label class="checklabel"><input type="checkbox" ${s.needsPaymentReport?'checked':''} onchange="updateStudent('${s.id}',{needsPaymentReport:this.checked})"> Родителю нужно писать про оплату после урока</label>
         <div class="filelabel">Материалы только для этого ученика</div>
