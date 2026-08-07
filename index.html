@@ -69,17 +69,21 @@
 </style>
 </head>
 <body>
-<div id="loginGate" style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem;">
+<div id="loadingScreen" style="min-height:100vh; display:flex; align-items:center; justify-content:center; color:#8A93A0; font-family:'IBM Plex Sans',sans-serif; font-size:0.875rem;">Загружаю…</div>
+<div id="loginGate" style="min-height:100vh; display:none; align-items:center; justify-content:center; padding:1.5rem;">
   <div style="width:100%; max-width:22rem; background:#fff; border-radius:0.875rem; padding:1.5rem; box-shadow:0 1px 2px rgba(31,42,61,0.08);">
     <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.25rem; margin-bottom:0.25rem;">📘 Вход в кабинет</div>
     <div style="font-size:0.8125rem; color:#5A6472; margin-bottom:1rem;">Свой email и пароль — только для тебя</div>
     <input id="loginEmail" type="email" placeholder="email" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
-    <input id="loginPassword" type="password" placeholder="пароль" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
+    <input id="loginPassword" type="password" placeholder="пароль" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+    <input id="loginInviteCode" type="text" placeholder="код приглашения (только для ученика)" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem; text-transform:uppercase;">
     <div id="loginError" style="font-size:0.78125rem; color:#C0392B; margin-bottom:0.5rem;"></div>
     <button onclick="doLogin()" style="width:100%; padding:0.625rem 0; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-weight:600; font-size:0.875rem; margin-bottom:0.5rem; cursor:pointer;">Войти</button>
     <button onclick="doSignup()" style="width:100%; padding:0.625rem 0; border-radius:0.625rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; font-weight:600; font-size:0.875rem; cursor:pointer;">Создать аккаунт (первый раз)</button>
+    <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.625rem;">Если ты ученик — впиши код приглашения от преподавателя перед созданием аккаунта. Если ты Аня — оставь это поле пустым.</div>
   </div>
 </div>
+<div id="studentRoot" style="display:none;"></div>
 <div id="appRoot" style="display:none;">
 <div class="wrap">
   <h1>📘 Перед уроком</h1>
@@ -256,6 +260,54 @@ function deleteStudent(id){
   data.students = data.students.filter(x=>x.id!==id);
   save();
 }
+async function generateInviteCode(studentId){
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for(let i=0;i<5;i++) code += chars[Math.floor(Math.random()*chars.length)];
+  if(!window.__fbCreateLink){ alert('Нет связи с базой, попробуй позже'); return; }
+  const ok = await window.__fbCreateLink(code, studentId);
+  if(ok){
+    const s = data.students.find(x=>x.id===studentId);
+    s.inviteCode = code;
+    save();
+  } else {
+    alert('Не получилось создать код, попробуй ещё раз');
+  }
+}
+async function revokeInviteCode(studentId){
+  const s = data.students.find(x=>x.id===studentId);
+  if(!s || !s.inviteCode) return;
+  if(window.__fbRevokeLink) await window.__fbRevokeLink(s.inviteCode);
+  delete s.inviteCode;
+  save();
+}
+
+function renderStudentView(student, sharedFiles){
+  const root = document.getElementById('studentRoot');
+  if(!student){
+    root.innerHTML = `<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; text-align:center; color:#5A6472;">Не получилось найти твои данные. Попроси преподавателя проверить код приглашения.<br><br><a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>`;
+    return;
+  }
+  const allFiles = [...(student.files||[]), ...(sharedFiles||[])];
+  root.innerHTML = `
+    <div style="min-height:100vh; background:#F3F5F1; padding:1.5rem;">
+      <div style="max-width:26rem; margin:0 auto;">
+        <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.25rem; margin-bottom:0.25rem;">Привет, ${esc(student.name)}! 👋</div>
+        <div style="font-size:0.8125rem; color:#5A6472; margin-bottom:1rem;">Всё для твоего урока — здесь. <a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>
+        <div class="card"><div class="body">
+          ${student.format!=='Очно' ? `
+            <div class="row" style="margin-bottom:0.5rem;">
+              <a class="btn ${student.callLink?'':'btn-off'}" href="${student.callLink?esc(student.callLink):'#'}" target="_blank" style="background:${student.callLink?'#1F2A3D':''};color:${student.callLink?'#fff':''}">🎥 Звонок</a>
+              <a class="btn ${student.boardLink?'':'btn-off'}" href="${student.boardLink?esc(student.boardLink):'#'}" target="_blank" style="background:${student.boardLink?'#C0392B':''};color:${student.boardLink?'#fff':''}">✏️ Доска</a>
+            </div>` : `<div style="font-size:0.8125rem; color:#5A6472; margin-bottom:0.75rem;">Занятие очное — увидимся на месте 🤝</div>`}
+          <div class="filelabel">Материалы к уроку</div>
+          ${allFiles.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;">Пока ничего нет</div>' : allFiles.map(f=>`
+            <div class="filerow"><span>📄</span><a href="${esc(f.url)}" target="_blank">${esc(f.name||f.url)}</a></div>`).join('')}
+        </div></div>
+      </div>
+    </div>`;
+}
+
 function addStudent(){
   data.students.push({id:uid(), name:'Новый ученик', grade:'', format: activeTab==='inperson' ? 'Очно' : 'Онлайн',
     accent: data.students.length % ACCENTS.length, messengers:[], boardLink:'', callLink:'',
@@ -405,7 +457,16 @@ function cardHTML(s){
           </div>
         </div>
         <label class="checklabel"><input type="checkbox" ${s.needsPaymentReport?'checked':''} onchange="updateStudent('${s.id}',{needsPaymentReport:this.checked})"> Родителю нужно писать про оплату после урока</label>
-        <div class="filelabel">Материалы только для этого ученика</div>
+
+        <div class="filelabel">Вход для ученика</div>
+        ${s.inviteCode ? `
+          <div class="msgbox" style="align-items:center;">
+            <div style="flex:1;">Код: <b style="font-family:'IBM Plex Mono',monospace; font-size:1rem;">${esc(s.inviteCode)}</b><br><span style="font-size:0.71875rem; color:#8A93A0;">Пришли этот код ученику — он вводит его один раз при создании своего аккаунта</span></div>
+            <button class="iconbtn" onclick="copyText('${esc(s.inviteCode)}', this)">⧉</button>
+            <button class="iconbtn" onclick="revokeInviteCode('${s.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+          </div>` : `
+          <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.625rem;" onclick="generateInviteCode('${s.id}')">🔑 Создать код для входа</button>`}
+                <div class="filelabel">Материалы только для этого ученика</div>
         ${renderFileRows(s.files, s.id, "removeFileFrom")}
         <div class="fileadd">
           <input class="fname" type="text" id="fname-${s.id}" placeholder="название">
@@ -472,7 +533,8 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     createUserWithEmailAndPassword, signOut
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
-    getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence
+    getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot,
+    collection, runTransaction, enableIndexedDbPersistence
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -491,8 +553,13 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
   try { await enableIndexedDbPersistence(db); } catch (e) { /* ok if it fails, e.g. private mode */ }
 
   let currentUid = null;
-  let unsubscribeSnap = null;
+  let unsubStudents = null;
+  let unsubMeta = null;
+  let unsubOneStudent = null;
   let saveTimer = null;
+  let knownStudentIds = new Set();
+  let latestMeta = { sharedFiles: [], openIds: [] };
+  let latestStudents = [];
 
   window.doLogin = async function () {
     const email = document.getElementById('loginEmail').value.trim();
@@ -505,56 +572,173 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
       errEl.textContent = 'Не получилось войти: ' + (e.code || e.message);
     }
   };
+
   window.doSignup = async function () {
     const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPassword').value;
+    const code = document.getElementById('loginInviteCode').value.trim().toUpperCase();
     const errEl = document.getElementById('loginError');
     errEl.textContent = '';
     if (pass.length < 6) { errEl.textContent = 'Пароль должен быть не короче 6 символов'; return; }
     try {
-      await createUserWithEmailAndPassword(auth, email, pass);
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      if (code) {
+        try {
+          await claimInviteCode(code, cred.user.uid);
+        } catch (e) {
+          errEl.textContent = 'Аккаунт создан, но код не сработал: ' + (e.message || e.code) + '. Попроси у преподавателя новый код и попробуй войти снова.';
+        }
+      }
     } catch (e) {
       errEl.textContent = 'Не получилось создать аккаунт: ' + (e.code || e.message);
     }
   };
+
   window.doLogout = async function () { await signOut(auth); };
 
-  window.__firestoreSave = function (d) {
-    if (!currentUid) return;
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      setDoc(doc(db, 'users', currentUid, 'appdata', 'main'), d).catch((e) => console.error('save failed', e));
-    }, 400);
+  async function claimInviteCode(code, uid) {
+    const linkRef = doc(db, 'studentLinks', code);
+    await runTransaction(db, async (tx) => {
+      const linkSnap = await tx.get(linkRef);
+      if (!linkSnap.exists() || linkSnap.data().claimed) {
+        throw new Error('код недействителен или уже использован');
+      }
+      const { tutorUid, studentId } = linkSnap.data();
+      tx.update(linkRef, { claimed: true, claimedBy: uid });
+      tx.set(doc(db, 'studentAccess', uid), { tutorUid, studentId });
+    });
+  }
+
+  window.__fbCreateLink = async function (code, studentId) {
+    if (!currentUid) return false;
+    try {
+      await setDoc(doc(db, 'studentLinks', code), {
+        tutorUid: currentUid, studentId, claimed: false, createdAt: Date.now()
+      });
+      return true;
+    } catch (e) { console.error('createLink failed', e); return false; }
+  };
+  window.__fbRevokeLink = async function (code) {
+    try { await deleteDoc(doc(db, 'studentLinks', code)); } catch (e) { /* ignore */ }
   };
 
-  onAuthStateChanged(auth, (user) => {
+  function pushSaveToFirestore() {
+    if (!currentUid) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      const currentIds = new Set((data.students || []).map(s => s.id));
+      for (const id of knownStudentIds) {
+        if (!currentIds.has(id)) {
+          deleteDoc(doc(db, 'users', currentUid, 'students', id)).catch(() => {});
+        }
+      }
+      knownStudentIds = currentIds;
+      (data.students || []).forEach(s => {
+        setDoc(doc(db, 'users', currentUid, 'students', s.id), s).catch((e) => console.error('save student failed', e));
+      });
+      setDoc(doc(db, 'users', currentUid, 'appdata', 'meta'), {
+        sharedFiles: data.sharedFiles || [], openIds: data.openIds || []
+      }).catch((e) => console.error('save meta failed', e));
+    }, 400);
+  }
+  window.__firestoreSave = pushSaveToFirestore;
+
+  async function migrateLegacyIfNeeded(uid) {
+    try {
+      const legacyRef = doc(db, 'users', uid, 'appdata', 'main');
+      const legacySnap = await getDoc(legacyRef);
+      if (!legacySnap.exists()) return;
+      const legacy = migrate(legacySnap.data());
+      for (const s of (legacy.students || [])) {
+        await setDoc(doc(db, 'users', uid, 'students', s.id), s);
+      }
+      await setDoc(doc(db, 'users', uid, 'appdata', 'meta'), {
+        sharedFiles: legacy.sharedFiles || [], openIds: legacy.openIds || []
+      });
+      await deleteDoc(legacyRef);
+    } catch (e) { console.error('legacy migration failed', e); }
+  }
+
+  function startTutorSync(uid) {
+    let studentsLoaded = false, metaLoaded = false;
+    const tryRender = () => {
+      if (!studentsLoaded || !metaLoaded) return;
+      data = { students: latestStudents, sharedFiles: latestMeta.sharedFiles, openIds: latestMeta.openIds };
+      knownStudentIds = new Set(latestStudents.map(s => s.id));
+      try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+      render();
+    };
+
+    unsubStudents = onSnapshot(collection(db, 'users', uid, 'students'), (snap) => {
+      latestStudents = snap.docs.map(d => migrateStudent(d.data()));
+      studentsLoaded = true;
+      tryRender();
+    }, (err) => console.error('students sync error', err));
+
+    unsubMeta = onSnapshot(doc(db, 'users', uid, 'appdata', 'meta'), (snap) => {
+      latestMeta = snap.exists() ? snap.data() : { sharedFiles: [], openIds: [] };
+      metaLoaded = true;
+      tryRender();
+    }, (err) => console.error('meta sync error', err));
+  }
+
+  function migrateStudent(s){
+    if(!Array.isArray(s.messengers)){
+      s.messengers = s.messenger ? [{id:'m1', label:'', url:s.messenger}] : [];
+    }
+    delete s.messenger;
+    return s;
+  }
+
+  async function startStudentView(uid) {
+    const accessSnap = await getDoc(doc(db, 'studentAccess', uid));
+    if (!accessSnap.exists()) { renderStudentView(null, []); return; }
+    const { tutorUid, studentId } = accessSnap.data();
+    const studentRef = doc(db, 'users', tutorUid, 'students', studentId);
+    const metaRef = doc(db, 'users', tutorUid, 'appdata', 'meta');
+    let studentData = null, metaData = { sharedFiles: [] };
+    unsubOneStudent = onSnapshot(studentRef, (snap) => {
+      studentData = snap.exists() ? migrateStudent(snap.data()) : null;
+      renderStudentView(studentData, metaData.sharedFiles);
+    }, () => renderStudentView(null, []));
+    onSnapshot(metaRef, (snap) => {
+      metaData = snap.exists() ? snap.data() : { sharedFiles: [] };
+      renderStudentView(studentData, metaData.sharedFiles);
+    });
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    const loading = document.getElementById('loadingScreen');
     const gate = document.getElementById('loginGate');
     const appRoot = document.getElementById('appRoot');
-    if (unsubscribeSnap) { unsubscribeSnap(); unsubscribeSnap = null; }
+    const studentRoot = document.getElementById('studentRoot');
+    if (unsubStudents) { unsubStudents(); unsubStudents = null; }
+    if (unsubMeta) { unsubMeta(); unsubMeta = null; }
+    if (unsubOneStudent) { unsubOneStudent(); unsubOneStudent = null; }
+    loading.style.display = 'none';
 
-    if (user) {
-      currentUid = user.uid;
-      gate.style.display = 'none';
-      appRoot.style.display = 'block';
-
-      const ref = doc(db, 'users', currentUid, 'appdata', 'main');
-      unsubscribeSnap = onSnapshot(ref, (snap) => {
-        if (snap.exists()) {
-          data = migrate(snap.data());
-          if (!data.openIds) data.openIds = [];
-        } else {
-          data = defaultData();
-          setDoc(ref, data).catch((e) => console.error('init failed', e));
-        }
-        try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
-        render();
-      }, (err) => {
-        console.error('sync error', err);
-      });
-    } else {
+    if (!user) {
       currentUid = null;
       appRoot.style.display = 'none';
+      studentRoot.style.display = 'none';
       gate.style.display = 'flex';
+      return;
+    }
+
+    currentUid = user.uid;
+    const accessSnap = await getDoc(doc(db, 'studentAccess', user.uid));
+
+    if (accessSnap.exists()) {
+      gate.style.display = 'none';
+      appRoot.style.display = 'none';
+      studentRoot.style.display = 'block';
+      startStudentView(user.uid);
+    } else {
+      gate.style.display = 'none';
+      studentRoot.style.display = 'none';
+      appRoot.style.display = 'block';
+      await migrateLegacyIfNeeded(user.uid);
+      startTutorSync(user.uid);
     }
   });
 </script>
