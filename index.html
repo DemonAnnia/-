@@ -4,11 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Кабинет репетитора</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1F2A3D">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -68,6 +63,10 @@
 <div class="wrap">
   <h1>📘 Перед уроком</h1>
   <div class="sub">Ссылки, доски и материалы — по каждому ученику. Всё хранится в этом браузере.</div>
+  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.125rem;">
+    <button onclick="syncBaseLinks()" style="font-size:0.75rem; padding:0.375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer;">🔄 Обновить базовые ссылки из файла</button>
+    <span id="syncMsg" style="font-size:0.75rem; color:#2E7D4F;"></span>
+  </div>
   <div id="students"></div>
   <button class="addstudent" onclick="addStudent()">+ Добавить ученика</button>
   <div class="sharedbox">
@@ -95,8 +94,12 @@ const ACCENTS = [
 function defaultData(){
   return {
     students: [
-      {id:'sonya', name:'Соня', grade:'9 класс', format:'Онлайн', accent:0, messenger:'', boardLink:'', callLink:'', needsPaymentReport:true,
-       subjects:[{label:'Школьная программа (1 ч)', price:'1700 ₽'},{label:'Подготовка к ОГЭ (1,5 ч)', price:'2900 ₽'}], files:[]},
+      {
+        id: "sonya", name: "Соня", grade: "9 класс", format: "Онлайн",
+        accent: 0, messenger: "https://vk.com/im?sel=630793840", boardLink: "https://unidraw.io/app/board/83192784a1059c3a4a4c", callLink: "https://telemost.yandex.ru/j/16483728930070",
+        needsPaymentReport: true,
+        subjects:[{label:'Школьная программа (1 ч)', price:'1700 ₽'},{label:'Подготовка к ОГЭ (1,5 ч)', price:'2900 ₽'}], files:[]
+      },
       {id:'lera', name:'Лера', grade:'9 класс', format:'Очно', accent:1, messenger:'', boardLink:'', callLink:'', needsPaymentReport:true,
        subjects:[{label:'Школьная программа (1 ч)', price:'1150 ₽'},{label:'Подготовка к ОГЭ (1,5 ч)', price:'2000 ₽'}], files:[]},
       {id:'ksyusha', name:'Ксюша', grade:'11 класс', format:'Онлайн', accent:2, messenger:'', boardLink:'', callLink:'', needsPaymentReport:true,
@@ -122,6 +125,27 @@ function load(){
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){} render(); }
 
 let data = load();
+const BASE_STUDENTS = defaultData().students;
+
+function syncBaseLinks(){
+  let changed = 0;
+  data.students.forEach(s => {
+    const base = BASE_STUDENTS.find(b => b.id === s.id);
+    if(!base) return;
+    if(base.callLink && s.callLink !== base.callLink){ s.callLink = base.callLink; changed++; }
+    if(base.boardLink && s.boardLink !== base.boardLink){ s.boardLink = base.boardLink; changed++; }
+    if(base.messenger && s.messenger !== base.messenger){ s.messenger = base.messenger; changed++; }
+  });
+  save();
+  syncMsg = changed ? `Обновлено ссылок: ${changed}` : 'Уже всё актуально';
+  renderSyncMsg();
+  setTimeout(()=>{ syncMsg=''; renderSyncMsg(); }, 2000);
+}
+let syncMsg = '';
+function renderSyncMsg(){
+  const el = document.getElementById('syncMsg');
+  if(el) el.textContent = syncMsg;
+}
 
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -267,7 +291,7 @@ function render(){
         <div style="padding-top:12px;">
           <div class="field"><span>🎥</span><input type="text" placeholder="ссылка на звонок (Зум / Телемост)" value="${esc(s.callLink)}" onchange="updateStudent('${s.id}',{callLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.callLink)}', this)">⧉</button></div>
           <div class="field"><span>✏️</span><input type="text" placeholder="ссылка на доску" value="${esc(s.boardLink)}" onchange="updateStudent('${s.id}',{boardLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.boardLink)}', this)">⧉</button></div>
-          <div class="field"><span>🔗</span><input type="text" placeholder="где переписка (ВК / ТГ / Ватсап)" value="${esc(s.messenger)}" onchange="updateStudent('${s.id}',{messenger:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.messenger)}', this)">⧉</button></div>
+          <div class="field"><span>🔗</span><input type="text" placeholder="ссылка на чат: wa.me/79001234567 или t.me/username (необязательно)" value="${esc(s.messenger)}" onchange="updateStudent('${s.id}',{messenger:this.value})">${s.messenger?`<a class="iconbtn" href="${esc(s.messenger)}" target="_blank" style="text-decoration:none;">↗</a>`:''}</div>
         </div>
         <label class="checklabel"><input type="checkbox" ${s.needsPaymentReport?'checked':''} onchange="updateStudent('${s.id}',{needsPaymentReport:this.checked})"> Родителю нужно писать про оплату после урока</label>
         <div class="filelabel">Материалы только для этого ученика</div>
@@ -287,12 +311,6 @@ function render(){
 }
 
 render();
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  });
-}
 </script>
 </body>
 </html>
