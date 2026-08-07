@@ -1,4 +1,4 @@
-const CACHE_NAME = "kabinet-repetitora-v4";
+const CACHE_NAME = "kabinet-repetitora-v5";
 const ASSETS = [
   "./index.html",
   "./app/tutor.html",
@@ -32,7 +32,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-store" })
       .then((response) => {
         if (response.ok && event.request.url.startsWith(self.location.origin)) {
           const copy = response.clone();
