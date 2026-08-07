@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Мой урок</title>
+<link rel="manifest" href="../manifest.json">
+<meta name="theme-color" content="#1F2A3D">
+<link rel="apple-touch-icon" href="../icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div id="loadingScreen" style="min-height:100vh; display:flex; align-items:center; justify-content:center; color:#8A93A0; font-family:'IBM Plex Sans',sans-serif; font-size:0.875rem;">Загружаю…</div>
+<button id="installBtn" style="display:none; position:fixed; bottom:1rem; left:1rem; right:1rem; max-width:24rem; margin:0 auto; align-items:center; justify-content:center; gap:0.5rem; padding:0.75rem 0; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-size:0.875rem; font-weight:600; cursor:pointer; z-index:10; box-shadow:0 2px 10px rgba(0,0,0,0.15);">📲 Установить приложение на это устройство</button>
+<div id="studentRoot" style="display:none;"></div>
+
+<script>
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function renderStudentView(student, sharedFiles){
+  const root = document.getElementById('studentRoot');
+  document.getElementById('loadingScreen').style.display = 'none';
+  root.style.display = 'block';
+  if(!student){
+    root.innerHTML = `<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; text-align:center; color:#5A6472;">Не получилось найти твои данные. Попроси преподавателя проверить код приглашения.<br><br><a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>`;
+    return;
+  }
+  const allFiles = [...(student.files||[]), ...(sharedFiles||[])];
+  root.innerHTML = `
+    <div style="min-height:100vh; background:#F3F5F1; padding:1.5rem;">
+      <div style="max-width:26rem; margin:0 auto;">
+        <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.25rem; margin-bottom:0.25rem;">Привет, ${esc(student.name)}! 👋</div>
+        <div style="font-size:0.8125rem; color:#5A6472; margin-bottom:1rem;">Всё для твоего урока — здесь. <a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>
+        <div class="card"><div class="body">
+          ${student.format!=='Очно' ? `
+            <div class="row" style="margin-bottom:0.5rem;">
+              <a class="btn ${student.callLink?'':'btn-off'}" href="${student.callLink?esc(student.callLink):'#'}" target="_blank" style="background:${student.callLink?'#1F2A3D':''};color:${student.callLink?'#fff':''}">🎥 Звонок</a>
+              <a class="btn ${student.boardLink?'':'btn-off'}" href="${student.boardLink?esc(student.boardLink):'#'}" target="_blank" style="background:${student.boardLink?'#C0392B':''};color:${student.boardLink?'#fff':''}">✏️ Доска</a>
+            </div>` : `<div style="font-size:0.8125rem; color:#5A6472; margin-bottom:0.75rem;">Занятие очное — увидимся на месте 🤝</div>`}
+          <div class="filelabel">Материалы к уроку</div>
+          ${allFiles.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;">Пока ничего нет</div>' : allFiles.map(f=>`
+            <div class="filerow"><span>📄</span><a href="${esc(f.url)}" target="_blank">${esc(f.name||f.url)}</a></div>`).join('')}
+        </div></div>
+      </div>
+    </div>`;
+}
+</script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { firebaseConfig } from "../assets/firebase-config.js";
+
+  const fbApp = initializeApp(firebaseConfig);
+  const auth = getAuth(fbApp);
+  const db = getFirestore(fbApp);
+
+  window.doLogout = async function () { await signOut(auth); window.location.replace('../index.html'); };
+
+  function migrateStudent(s){
+    if(!Array.isArray(s.messengers)){ s.messengers = s.messenger ? [{id:'m1', label:'', url:s.messenger}] : []; }
+    delete s.messenger;
+    return s;
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.replace('../index.html'); return; }
+
+    const accessSnap = await getDoc(doc(db, 'studentAccess', user.uid));
+    if (!accessSnap.exists()) { window.location.replace('tutor.html'); return; }
+
+    const { tutorUid, studentId } = accessSnap.data();
+    const studentRef = doc(db, 'users', tutorUid, 'students', studentId);
+    const metaRef = doc(db, 'users', tutorUid, 'appdata', 'meta');
+    let studentData = null, sharedFiles = [];
+
+    onSnapshot(studentRef, (snap) => {
+      studentData = snap.exists() ? migrateStudent(snap.data()) : null;
+      renderStudentView(studentData, sharedFiles);
+    }, () => renderStudentView(null, []));
+
+    onSnapshot(metaRef, (snap) => {
+      sharedFiles = snap.exists() ? (snap.data().sharedFiles || []) : [];
+      renderStudentView(studentData, sharedFiles);
+    });
+  });
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => { navigator.serviceWorker.register("../sw.js").catch(() => {}); });
+  }
+
+  let deferredInstallPrompt = null;
+  const installBtn = document.getElementById('installBtn');
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!isStandalone) installBtn.style.display = 'flex';
+  });
+  installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBtn.style.display = 'none';
+  });
+  window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
+</script>
+</body>
+</html>

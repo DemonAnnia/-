@@ -1,6 +1,10 @@
-const CACHE_NAME = "kabinet-repetitora-v2";
+const CACHE_NAME = "kabinet-repetitora-v4";
 const ASSETS = [
   "./index.html",
+  "./app/tutor.html",
+  "./app/student.html",
+  "./assets/styles.css",
+  "./assets/firebase-config.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

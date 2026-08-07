@@ -11,70 +11,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  * { box-sizing: border-box; }
-  html { font-size: clamp(14px, 4vw, 17px); }
-  html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
-  body {
-    margin: 0; font-family: 'IBM Plex Sans', sans-serif; color: #1F2A3D;
-    background: #F3F5F1;
-    background-image: linear-gradient(#E3E8DF 1px, transparent 1px), linear-gradient(90deg, #E3E8DF 1px, transparent 1px);
-    background-size: 1.375rem 1.375rem;
-    padding-bottom: 2.5rem;
-  }
-  .wrap { width: 100%; max-width: min(94%, 30rem); margin: 0 auto; padding: 1.375rem 0 0; }
-  img, svg { max-width: 100%; }
-  h1 { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.3125rem; margin:0 0 0.125rem; display:flex; align-items:center; gap:0.5rem; }
-  .sub { font-size:0.8125rem; color:#5A6472; margin-bottom:1.125rem; }
-  .card { background:#fff; border-radius:0.875rem; margin-bottom:0.75rem; overflow:hidden; box-shadow:0 1px 2px rgba(31,42,61,0.06); }
-  .card-head { padding:0.75rem 0.875rem; display:flex; align-items:center; gap:0.625rem; cursor:pointer; }
-  .dot { width:0.5rem; height:0.5rem; border-radius:0.5rem; flex-shrink:0; }
-  .name { font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1rem; }
-  .meta { font-size:0.75rem; color:#5A6472; }
-  .chev { width:1.875rem; height:1.875rem; border-radius:0.5rem; background:#fff; border:none; margin-left:auto; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .2s; }
-  .chev.open { transform: rotate(180deg); }
-  .body { padding:0.75rem 0.875rem; }
-  .tags { display:flex; flex-wrap:wrap; gap:0.375rem; margin-bottom:0.75rem; }
-  .tag { font-size:0.75rem; font-family:'IBM Plex Mono',monospace; padding:0.25rem 0.5625rem; border-radius:999px; background:#F1F3F5; color:#3A4250; }
-  .row { display:flex; flex-wrap:wrap; gap:0.5rem; }
-  .btn { flex:1 1 30%; min-width:30%; display:flex; align-items:center; justify-content:center; gap:0.375rem; padding:0.625rem 0.375rem; border-radius:0.625rem; font-size:0.8125rem; font-weight:600; border:none; text-decoration:none; cursor:pointer; text-align:center; white-space:nowrap; }
-  .chiprow { display:flex; flex-wrap:wrap; gap:0.375rem; margin-top:0.5rem; }
-  .chip { display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.625rem; border-radius:999px; font-size:0.71875rem; font-weight:600; background:#EAF0F6; color:#2C4A7C; text-decoration:none; white-space:nowrap; border:1px solid #D7E2EC; }
-  .grouptitle { display:flex; align-items:center; gap:0.375rem; font-size:0.78125rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin:1.125rem 0 0.5rem; }
-  .grouptitle:first-child { margin-top:0; }
-  .btn-off { background:#E7E9EC; color:#9BA3AE; }
-  .btn-done { background:#E2EFE6; color:#2E7D4F; border:1px solid #CBE6D5; }
-  .msgbox { margin-top:0.625rem; background:#FBFAF6; border:1px dashed #D8D2BE; border-radius:0.625rem; padding:0.5625rem 0.625rem; display:flex; gap:0.5rem; align-items:center; font-size:0.78125rem; color:#4A4530; }
-  .edit { padding:0 0.875rem 0.875rem; border-top:1px solid #EEF0F2; display:none; }
-  .edit.open { display:block; }
-  .field { display:flex; gap:0.375rem; align-items:center; margin-bottom:0.5rem; }
-  .field input[type=text] { flex:1; min-width:0; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; font-family:'IBM Plex Mono',monospace; color:#1F2A3D; }
-  .iconbtn { width:2.125rem; height:2.125rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; flex-shrink:0; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.875rem; }
-  .iconbtn.copied { background:#E2EFE6; }
-  .checklabel { display:flex; align-items:center; gap:0.5rem; font-size:0.8125rem; margin:0.375rem 0 0.875rem; cursor:pointer; }
-  .filelabel { font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem; }
-  .filerow { display:flex; gap:0.375rem; align-items:center; margin-bottom:0.375rem; }
-  .filerow a { flex:1; min-width:0; font-size:0.8125rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .fileadd { display:flex; flex-wrap:wrap; gap:0.375rem; margin-top:0.375rem; }
-  .fileadd input { font-size:0.78125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; }
-  .fileadd input.fname { flex:1 1 35%; min-width:35%; }
-  .fileadd input.furl { flex:2 1 55%; min-width:55%; }
-  .addfilebtn { width:2rem; height:2rem; border-radius:0.5rem; background:#1F2A3D; color:#fff; border:none; flex-shrink:0; cursor:pointer; }
-  .delbtn { margin-top:1rem; display:flex; align-items:center; gap:0.375rem; font-size:0.78125rem; color:#C0392B; background:none; border:none; cursor:pointer; padding:0; }
-  .addstudent { width:100%; display:flex; align-items:center; justify-content:center; gap:0.375rem; padding:0.75rem 0; border-radius:0.75rem; border:1.5px dashed #C9D2DB; color:#5A6472; font-size:0.84375rem; font-weight:500; background:transparent; margin-bottom:1.5rem; cursor:pointer; }
-  .sharedbox { background:#fff; border-radius:0.875rem; padding:0.875rem; border:1px solid #E7E9EC; }
-  .shtitle { display:flex; align-items:center; gap:0.375rem; margin-bottom:0.625rem; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:0.90625rem; }
-  .shhint { font-size:0.75rem; color:#8A93A0; margin-bottom:0.5rem; }
-  input:focus, button:focus { outline: 2px solid #2C4A7C; outline-offset: 1px; }
-</style>
+<link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
 <div id="loadingScreen" style="min-height:100vh; display:flex; align-items:center; justify-content:center; color:#8A93A0; font-family:'IBM Plex Sans',sans-serif; font-size:0.875rem;">Загружаю…</div>
 <div id="loginGate" style="min-height:100vh; display:none; align-items:center; justify-content:center; padding:1.5rem;">
   <div style="width:100%; max-width:22rem; background:#fff; border-radius:0.875rem; padding:1.5rem; box-shadow:0 1px 2px rgba(31,42,61,0.08);">
     <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.25rem; margin-bottom:0.25rem;">📘 Вход в кабинет</div>
-    <div style="font-size:0.8125rem; color:#5A6472; margin-bottom:1rem;">Свой email и пароль — только для тебя</div>
-    <input id="loginEmail" type="email" placeholder="email" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+    <div style="font-size:0.8125rem; color:#5A6472; margin-bottom:1rem;">Свой логин и пароль — только для тебя</div>
+    <input id="loginEmail" type="text" placeholder="логин (или email)" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
     <input id="loginPassword" type="password" placeholder="пароль" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
     <input id="loginInviteCode" type="text" placeholder="код приглашения (только для ученика)" style="width:100%; font-size:0.875rem; padding:0.625rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem; text-transform:uppercase;">
     <div id="loginError" style="font-size:0.78125rem; color:#C0392B; margin-bottom:0.5rem;"></div>
@@ -83,519 +28,21 @@
     <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.625rem;">Если ты ученик — впиши код приглашения от преподавателя перед созданием аккаунта. Если ты Аня — оставь это поле пустым.</div>
   </div>
 </div>
-<div id="studentRoot" style="display:none;"></div>
-<div id="appRoot" style="display:none;">
-<div class="wrap">
-  <h1>📘 Перед уроком</h1>
-  <div class="sub">Ссылки, доски и материалы — по каждому ученику. Синхронизируется на всех устройствах. <a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>
-  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.125rem;">
-    <button onclick="syncBaseLinks()" style="font-size:0.75rem; padding:0.375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer;">🔄 Обновить базовые ссылки из файла</button>
-    <span id="syncMsg" style="font-size:0.75rem; color:#2E7D4F;"></span>
-  </div>
-  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.125rem; flex-wrap:wrap;">
-    <button onclick="downloadBackup()" style="font-size:0.75rem; padding:0.375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer;">💾 Скачать резервную копию</button>
-    <button onclick="document.getElementById('restoreFile').click()" style="font-size:0.75rem; padding:0.375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer;">📂 Загрузить из копии</button>
-    <input id="restoreFile" type="file" accept="application/json" style="display:none;" onchange="restoreBackup(this)">
-  </div>
-  <button id="installBtn" style="display:none; width:100%; align-items:center; justify-content:center; gap:0.5rem; padding:0.625rem 0; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-size:0.875rem; font-weight:600; margin-bottom:1.125rem; cursor:pointer;">📲 Установить приложение на этот телефон</button>
-  <div id="students"></div>
-
-  <button class="addstudent" onclick="addStudent()">+ Добавить ученика</button>
-  <div class="sharedbox">
-    <div class="shtitle">👥 Общие материалы</div>
-    <div class="shhint">Файлы отсюда видно у каждого ученика — удобно, когда один материал в итоге пригодился всем</div>
-    <div id="sharedFiles"></div>
-    <div class="fileadd">
-      <input class="fname" id="sh-name" type="text" placeholder="название">
-      <input class="furl" id="sh-url" type="text" placeholder="ссылка на файл">
-      <button class="addfilebtn" onclick="addSharedFile()">+</button>
-    </div>
-  </div>
-</div>
-</div>
-
-<script>
-const KEY = 'tutoring-app-data-v1';
-const ACCENTS = [
-  {ink:'#C0392B', soft:'#F6E4E1'},
-  {ink:'#2E7D4F', soft:'#E2EFE6'},
-  {ink:'#2C4A7C', soft:'#E3E9F1'},
-  {ink:'#B5651D', soft:'#F3E5D6'},
-  {ink:'#5A6472', soft:'#E7E9EC'},
-];
-
-function defaultData(){
-  return {
-    students: [
-      {
-        id: "sonya", name: "Соня", grade: "9 класс", format: "Онлайн",
-        accent: 0, messengers: [{id:'m1', label:'ВК (Соня)', url:'https://vk.com/im?sel=630793840'}, {id:'m2', label:'ТГ (мама)', url:'https://t.me/Dontfaqmymind'}, {id:'m3', label:'ТГ (Соня)', url:'https://t.me/Coconutnv'}], boardLink: "https://unidraw.io/app/board/83192784a1059c3a4a4c", callLink: "https://telemost.yandex.ru/j/16483728930070",
-        needsPaymentReport: true,
-        subjects:[{label:'Школьная программа (1 ч)', price:'1700 ₽'},{label:'Подготовка к ОГЭ (1,5 ч)', price:'2900 ₽'}], files:[]
-      },
-      {id:'lera', name:'Лера', grade:'9 класс', format:'Очно', accent:1, messengers:[{id:'m1', label:'ТГ (Лера)', url:'https://t.me/Kotiktv3'}, {id:'m2', label:'ТГ (мама Леры)', url:'https://t.me/svetlana_2l'}], boardLink:'', callLink:'', needsPaymentReport:true,
-       subjects:[{label:'Школьная программа (1 ч)', price:'1150 ₽'},{label:'Подготовка к ОГЭ (1,5 ч)', price:'2000 ₽'}], files:[]},
-      {id:'ksyusha', name:'Ксюша', grade:'11 класс', format:'Онлайн', accent:2, messengers:[], boardLink:'', callLink:'', needsPaymentReport:true,
-       subjects:[{label:'Подготовка к ЕГЭ (1,5 ч)', price:'2650 ₽'}], files:[]},
-      {id:'nadya', name:'Надя', grade:'9 класс', format:'Очно', accent:4, messengers:[{id:'m1', label:'ТГ (Надя)', url:'https://t.me/omishonaa'}], boardLink:'', callLink:'', needsPaymentReport:false,
-       subjects:[{label:'Школьная программа (сестра)', price:'Бесплатно'}], files:[]},
-      {id:'anya8', name:'Аня', grade:'8 класс', format:'Онлайн', accent:3, messengers:[], boardLink:'', callLink:'', needsPaymentReport:true,
-       subjects:[{label:'Школьная программа (1 ч)', price:'1700 ₽'}], files:[]},
-    ],
-    sharedFiles: [],
-    openIds: [],
-  };
-}
-
-function uid(){ return Math.random().toString(36).slice(2,9); }
-
-function migrate(d){
-  d.students.forEach(s => {
-    if(!Array.isArray(s.messengers)){
-      s.messengers = s.messenger ? [{id: uid(), label:'', url: s.messenger}] : [];
-    }
-    delete s.messenger;
-  });
-  return d;
-}
-
-function load(){
-  try{
-    const raw = localStorage.getItem(KEY);
-    return raw ? migrate(JSON.parse(raw)) : defaultData();
-  }catch(e){ return defaultData(); }
-}
-function save(){
-  try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
-  if(window.__firestoreSave) window.__firestoreSave(data);
-  render();
-}
-
-let data = defaultData(); // placeholder until Firebase auth + Firestore load finishes
-const BASE_STUDENTS = defaultData().students;
-
-function downloadBackup(){
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const dateStr = new Date().toISOString().slice(0,10);
-  a.href = url;
-  a.download = `kabinet-repetitora-backup-${dateStr}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-function restoreBackup(input){
-  const file = input.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    try{
-      const parsed = migrate(JSON.parse(reader.result));
-      if(!Array.isArray(parsed.students)) throw new Error('bad format');
-      if(!confirm('Заменить текущие данные содержимым файла? Текущие данные будут перезаписаны.')) return;
-      data = parsed;
-      if(!data.openIds) data.openIds = [];
-      save();
-    }catch(e){
-      alert('Не получилось прочитать файл — убедись, что это резервная копия, скачанная отсюда же.');
-    }
-    input.value = '';
-  };
-  reader.readAsText(file);
-}
-
-function syncBaseLinks(){
-  let changed = 0;
-  data.students.forEach(s => {
-    const base = BASE_STUDENTS.find(b => b.id === s.id);
-    if(!base) return;
-    if(base.callLink && s.callLink !== base.callLink){ s.callLink = base.callLink; changed++; }
-    if(base.boardLink && s.boardLink !== base.boardLink){ s.boardLink = base.boardLink; changed++; }
-    if(base.messengers && base.messengers.length){
-      if(!Array.isArray(s.messengers)) s.messengers = [];
-      base.messengers.forEach(bm => {
-        if(!s.messengers.some(m => m.id === bm.id)){
-          s.messengers.push({...bm});
-          changed++;
-        }
-      });
-    }
-  });
-  save();
-  syncMsg = changed ? `Обновлено ссылок: ${changed}` : 'Уже всё актуально';
-  renderSyncMsg();
-  setTimeout(()=>{ syncMsg=''; renderSyncMsg(); }, 2000);
-}
-let syncMsg = '';
-function renderSyncMsg(){
-  const el = document.getElementById('syncMsg');
-  if(el) el.textContent = syncMsg;
-}
-
-function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
-
-async function copyText(text, btn){
-  if(!text) return;
-  try{ await navigator.clipboard.writeText(text); }catch(e){}
-  btn.classList.add('copied');
-  btn.textContent = '✓';
-  setTimeout(()=>{ btn.classList.remove('copied'); btn.textContent = '⧉'; }, 1200);
-}
-
-function toggleOpen(id){
-  const i = data.openIds.indexOf(id);
-  if(i>=0) data.openIds.splice(i,1); else data.openIds.push(id);
-  save();
-}
-
-function updateStudent(id, patch){
-  const s = data.students.find(x=>x.id===id);
-  Object.assign(s, patch);
-  save();
-}
-function deleteStudent(id){
-  if(!confirm('Удалить ученика?')) return;
-  data.students = data.students.filter(x=>x.id!==id);
-  save();
-}
-async function generateInviteCode(studentId){
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for(let i=0;i<5;i++) code += chars[Math.floor(Math.random()*chars.length)];
-  if(!window.__fbCreateLink){ alert('Нет связи с базой, попробуй позже'); return; }
-  const ok = await window.__fbCreateLink(code, studentId);
-  if(ok){
-    const s = data.students.find(x=>x.id===studentId);
-    s.inviteCode = code;
-    save();
-  } else {
-    alert('Не получилось создать код, попробуй ещё раз');
-  }
-}
-async function revokeInviteCode(studentId){
-  const s = data.students.find(x=>x.id===studentId);
-  if(!s || !s.inviteCode) return;
-  if(window.__fbRevokeLink) await window.__fbRevokeLink(s.inviteCode);
-  delete s.inviteCode;
-  save();
-}
-
-function renderStudentView(student, sharedFiles){
-  const root = document.getElementById('studentRoot');
-  if(!student){
-    root.innerHTML = `<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; text-align:center; color:#5A6472;">Не получилось найти твои данные. Попроси преподавателя проверить код приглашения.<br><br><a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>`;
-    return;
-  }
-  const allFiles = [...(student.files||[]), ...(sharedFiles||[])];
-  root.innerHTML = `
-    <div style="min-height:100vh; background:#F3F5F1; padding:1.5rem;">
-      <div style="max-width:26rem; margin:0 auto;">
-        <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.25rem; margin-bottom:0.25rem;">Привет, ${esc(student.name)}! 👋</div>
-        <div style="font-size:0.8125rem; color:#5A6472; margin-bottom:1rem;">Всё для твоего урока — здесь. <a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>
-        <div class="card"><div class="body">
-          ${student.format!=='Очно' ? `
-            <div class="row" style="margin-bottom:0.5rem;">
-              <a class="btn ${student.callLink?'':'btn-off'}" href="${student.callLink?esc(student.callLink):'#'}" target="_blank" style="background:${student.callLink?'#1F2A3D':''};color:${student.callLink?'#fff':''}">🎥 Звонок</a>
-              <a class="btn ${student.boardLink?'':'btn-off'}" href="${student.boardLink?esc(student.boardLink):'#'}" target="_blank" style="background:${student.boardLink?'#C0392B':''};color:${student.boardLink?'#fff':''}">✏️ Доска</a>
-            </div>` : `<div style="font-size:0.8125rem; color:#5A6472; margin-bottom:0.75rem;">Занятие очное — увидимся на месте 🤝</div>`}
-          <div class="filelabel">Материалы к уроку</div>
-          ${allFiles.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;">Пока ничего нет</div>' : allFiles.map(f=>`
-            <div class="filerow"><span>📄</span><a href="${esc(f.url)}" target="_blank">${esc(f.name||f.url)}</a></div>`).join('')}
-        </div></div>
-      </div>
-    </div>`;
-}
-
-function addStudent(){
-  data.students.push({id:uid(), name:'Новый ученик', grade:'', format: activeTab==='inperson' ? 'Очно' : 'Онлайн',
-    accent: data.students.length % ACCENTS.length, messengers:[], boardLink:'', callLink:'',
-    needsPaymentReport:true, subjects:[], files:[]});
-  save();
-}
-function addFileTo(id){
-  const s = data.students.find(x=>x.id===id);
-  const nameEl = document.getElementById('fname-'+id);
-  const urlEl = document.getElementById('furl-'+id);
-  if(!urlEl.value) return;
-  s.files.push({id:uid(), name:nameEl.value, url:urlEl.value});
-  save();
-}
-function removeFileFrom(sid, fid){
-  const s = data.students.find(x=>x.id===sid);
-  s.files = s.files.filter(f=>f.id!==fid);
-  save();
-}
-function addMessenger(id){
-  const s = data.students.find(x=>x.id===id);
-  const labelEl = document.getElementById('mlabel-'+id);
-  const urlEl = document.getElementById('murl-'+id);
-  if(!urlEl.value) return;
-  s.messengers.push({id:uid(), label:labelEl.value, url:urlEl.value});
-  labelEl.value=''; urlEl.value='';
-  save();
-}
-function removeMessenger(sid, mid){
-  const s = data.students.find(x=>x.id===sid);
-  s.messengers = s.messengers.filter(m=>m.id!==mid);
-  save();
-}
-function addSharedFile(){
-  const nameEl = document.getElementById('sh-name');
-  const urlEl = document.getElementById('sh-url');
-  if(!urlEl.value) return;
-  data.sharedFiles.push({id:uid(), name:nameEl.value, url:urlEl.value});
-  save();
-}
-function removeSharedFile(fid){
-  data.sharedFiles = data.sharedFiles.filter(f=>f.id!==fid);
-  save();
-}
-
-let doneMsgFor = {};
-function markDone(id){
-  if(doneMsgFor[id]){
-    delete doneMsgFor[id];
-    render();
-    return;
-  }
-  const s = data.students.find(x=>x.id===id);
-  const d = new Date();
-  const dateStr = d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
-  doneMsgFor[id] = `Здравствуйте! Занятие с ${s.name} ${dateStr} прошло — можно оплачивать 🙂`;
-  render();
-}
-
-let studentMsgOpen = {};
-function buildStudentMessage(s){
-  const lines = [];
-  if(s.format!=='Очно' && s.callLink) lines.push(`Подключиться к занятию: ${s.callLink}`);
-  if(s.format!=='Очно' && s.boardLink) lines.push(`Доска: ${s.boardLink}`);
-  const allFiles = [...s.files, ...data.sharedFiles];
-  if(allFiles.length){
-    lines.push('Материалы к уроку:');
-    allFiles.forEach(f=> lines.push(`- ${f.name ? f.name+': ' : ''}${f.url}`));
-  }
-  if(lines.length===0) return null;
-  return `Привет, ${s.name}! Вот что нужно для занятия:\n\n${lines.join('\n')}`;
-}
-function toggleStudentMsg(id){
-  if(studentMsgOpen[id]) delete studentMsgOpen[id]; else studentMsgOpen[id] = true;
-  render();
-}
-
-
-function renderFileRows(files, sid, extraOnRemove){
-  if(files.length===0) return '<div style="font-size:12.5px;color:#9BA3AE;margin-bottom:8px;">Пока пусто</div>';
-  return files.map(f=>`
-    <div class="filerow">
-      <span>📄</span>
-      <a href="${esc(f.url)}" target="_blank" rel="noreferrer">${esc(f.name||f.url)}</a>
-      <button class="iconbtn" onclick="copyText('${esc(f.url)}', this)">⧉</button>
-      ${extraOnRemove ? `<button class="iconbtn" onclick="${extraOnRemove}('${sid?sid+"','":""}${f.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>` : ''}
-    </div>`).join('');
-}
-
-let msgTextById = {};
-function renderStudentMsgBox(s){
-  const text = buildStudentMessage(s);
-  if(!text){
-    return `<div class="msgbox" style="border-color:#E3E3D8;"><div style="flex:1;">Пока нет ни ссылок, ни материалов у ${esc(s.name)} — добавь их ниже, и здесь появится готовый текст.</div></div>`;
-  }
-  msgTextById[s.id] = text;
-  return `<div class="msgbox" style="white-space:pre-wrap;"><div style="flex:1;">${esc(text)}</div><button class="iconbtn" onclick="copyStudentMsg('${s.id}', this)">⧉</button></div>`;
-}
-function copyStudentMsg(id, btn){ copyText(msgTextById[id], btn); }
-
-function cardHTML(s){
-    const accent = ACCENTS[s.accent] || ACCENTS[0];
-    const open = data.openIds.includes(s.id);
-    const tags = s.subjects.map(sub=>`<span class="tag">${esc(sub.label)} · ${esc(sub.price)}</span>`).join('');
-    const msg = doneMsgFor[s.id];
-    return `
-    <div class="card">
-      <div class="card-head" style="background:${accent.soft}" onclick="toggleOpen('${s.id}')">
-        <div class="dot" style="background:${accent.ink}"></div>
-        <div style="flex:1;min-width:0;">
-          <div class="name">${esc(s.name)}</div>
-          <div class="meta">${esc(s.grade)} · ${esc(s.format)}</div>
-        </div>
-        <button class="chev ${open?'open':''}">⌄</button>
-      </div>
-      <div class="body">
-        <div class="tags">${tags}</div>
-        <div class="row">
-          ${s.format!=='Очно'?`<a class="btn ${s.callLink?'':'btn-off'}" href="${s.callLink?esc(s.callLink):'#'}" target="_blank" style="background:${s.callLink?'#1F2A3D':''};color:${s.callLink?'#fff':''}" onclick="${s.callLink?'':'return false;'}">🎥 Звонок</a>`:''}
-          ${s.format!=='Очно'?`<a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?accent.ink:''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>`:''}
-          ${s.needsPaymentReport?`<button class="btn btn-done" onclick="markDone('${s.id}')">✓ Урок прошёл</button>`:''}
-        </div>
-        ${s.messengers.length ? `<div class="chiprow">${s.messengers.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank">💬 ${esc(m.label||'Чат')}</a>`).join('')}</div>` : ''}
-        <button class="btn" style="width:100%;margin-top:8px;background:${accent.soft};color:${accent.ink};border:1px solid ${accent.soft};" onclick="toggleStudentMsg('${s.id}')">📨 Сообщение ученику со ссылками</button>
-        ${msg?`<div class="msgbox"><div style="flex:1;">${esc(msg)}</div>${s.needsPaymentReport?`<button class="iconbtn" onclick="copyText('${esc(msg)}', this)">⧉</button>`:''}</div>`:''}
-        ${studentMsgOpen[s.id] ? renderStudentMsgBox(s) : ''}
-      </div>
-      <div class="edit ${open?'open':''}">
-        <div style="display:flex; gap:0.375rem; padding-top:0.75rem; margin-bottom:0.625rem;">
-          <button onclick="updateStudent('${s.id}',{format:'Онлайн'})" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${s.format!=='Очно'?accent.ink:'#C9D2DB'}; background:${s.format!=='Очно'?accent.soft:'#fff'}; color:${s.format!=='Очно'?accent.ink:'#8A93A0'}; cursor:pointer;">💻 Онлайн</button>
-          <button onclick="updateStudent('${s.id}',{format:'Очно'})" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${s.format==='Очно'?accent.ink:'#C9D2DB'}; background:${s.format==='Очно'?accent.soft:'#fff'}; color:${s.format==='Очно'?accent.ink:'#8A93A0'}; cursor:pointer;">🤝 Очно</button>
-        </div>
-        <div style="padding-top:0;">
-          ${s.format!=='Очно'?`<div class="field"><span>🎥</span><input type="text" placeholder="ссылка на звонок (Зум / Телемост)" value="${esc(s.callLink)}" onchange="updateStudent('${s.id}',{callLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.callLink)}', this)">⧉</button></div>`:''}
-          ${s.format!=='Очно'?`<div class="field"><span>✏️</span><input type="text" placeholder="ссылка на доску" value="${esc(s.boardLink)}" onchange="updateStudent('${s.id}',{boardLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.boardLink)}', this)">⧉</button></div>`:''}
-          <div class="filelabel" style="margin-top:0.5rem;">Ссылки на чат (можно несколько — для ребёнка и для родителя)</div>
-          ${s.messengers.length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>' : s.messengers.map(m=>`
-            <div class="filerow">
-              <span>💬</span>
-              <a href="${esc(m.url)}" target="_blank" rel="noreferrer">${esc(m.label||m.url)}</a>
-              <button class="iconbtn" onclick="removeMessenger('${s.id}','${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
-            </div>`).join('')}
-          <div class="fileadd">
-            <input class="fname" type="text" id="mlabel-${s.id}" placeholder="кому (ВК / родителю)">
-            <input class="furl" type="text" id="murl-${s.id}" placeholder="ссылка: wa.me/... или t.me/...">
-            <button class="addfilebtn" onclick="addMessenger('${s.id}')">+</button>
-          </div>
-        </div>
-        <label class="checklabel"><input type="checkbox" ${s.needsPaymentReport?'checked':''} onchange="updateStudent('${s.id}',{needsPaymentReport:this.checked})"> Родителю нужно писать про оплату после урока</label>
-
-        <div class="filelabel">Вход для ученика</div>
-        ${s.inviteCode ? `
-          <div class="msgbox" style="align-items:center;">
-            <div style="flex:1;">Код: <b style="font-family:'IBM Plex Mono',monospace; font-size:1rem;">${esc(s.inviteCode)}</b><br><span style="font-size:0.71875rem; color:#8A93A0;">Пришли этот код ученику — он вводит его один раз при создании своего аккаунта</span></div>
-            <button class="iconbtn" onclick="copyText('${esc(s.inviteCode)}', this)">⧉</button>
-            <button class="iconbtn" onclick="revokeInviteCode('${s.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
-          </div>` : `
-          <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.625rem;" onclick="generateInviteCode('${s.id}')">🔑 Создать код для входа</button>`}
-                <div class="filelabel">Материалы только для этого ученика</div>
-        ${renderFileRows(s.files, s.id, "removeFileFrom")}
-        <div class="fileadd">
-          <input class="fname" type="text" id="fname-${s.id}" placeholder="название">
-          <input class="furl" type="text" id="furl-${s.id}" placeholder="ссылка на файл">
-          <button class="addfilebtn" onclick="addFileTo('${s.id}')">+</button>
-        </div>
-        ${data.sharedFiles.length? `<div style="margin-top:12px;"><div class="filelabel">Общие материалы (видны всем)</div>${renderFileRows(data.sharedFiles)}</div>` : ''}
-        <button class="delbtn" onclick="deleteStudent('${s.id}')">🗑 Удалить ученика</button>
-      </div>
-    </div>`;
-}
-
-let activeTab = 'online';
-function setTab(tab){ activeTab = tab; render(); }
-
-function render(){
-  const wrap = document.getElementById('students');
-  const online = data.students.filter(s => s.format !== 'Очно');
-  const inperson = data.students.filter(s => s.format === 'Очно');
-  const list = activeTab === 'online' ? online : inperson;
-
-  const tabsHtml = `
-    <div style="display:flex; gap:0.5rem; margin-bottom:0.875rem;">
-      <button onclick="setTab('online')" style="flex:1; padding:0.5rem 0; border-radius:0.625rem; font-size:0.84375rem; font-weight:700; border:1px solid ${activeTab==='online'?'#1F2A3D':'#C9D2DB'}; background:${activeTab==='online'?'#1F2A3D':'#fff'}; color:${activeTab==='online'?'#fff':'#5A6472'}; cursor:pointer;">💻 Онлайн</button>
-      <button onclick="setTab('inperson')" style="flex:1; padding:0.5rem 0; border-radius:0.625rem; font-size:0.84375rem; font-weight:700; border:1px solid ${activeTab==='inperson'?'#1F2A3D':'#C9D2DB'}; background:${activeTab==='inperson'?'#1F2A3D':'#fff'}; color:${activeTab==='inperson'?'#fff':'#5A6472'}; cursor:pointer;">🤝 Очно</button>
-    </div>`;
-
-  wrap.innerHTML = tabsHtml + (list.length ? list.map(cardHTML).join('') : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`);
-
-  document.getElementById('sharedFiles').innerHTML = renderFileRows(data.sharedFiles, null, "removeSharedFile");
-}
-
-render();
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  });
-}
-
-// custom install button — more reliable than waiting for the browser to surface its own prompt
-let deferredInstallPrompt = null;
-const installBtn = document.getElementById('installBtn');
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  if (!isStandalone) installBtn.style.display = 'flex';
-});
-installBtn.addEventListener('click', async () => {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  await deferredInstallPrompt.userChoice;
-  deferredInstallPrompt = null;
-  installBtn.style.display = 'none';
-});
-window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
-</script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
-    getAuth, onAuthStateChanged, signInWithEmailAndPassword,
-    createUserWithEmailAndPassword, signOut
+    getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot,
-    collection, runTransaction, enableIndexedDbPersistence
+    getFirestore, doc, getDoc, setDoc, runTransaction, enableIndexedDbPersistence
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyDLHlDB2VzjNKC84a9Uyvgm0J4iXe0C3Qc",
-    authDomain: "kabinet-repetitora.firebaseapp.com",
-    projectId: "kabinet-repetitora",
-    storageBucket: "kabinet-repetitora.firebasestorage.app",
-    messagingSenderId: "318366683329",
-    appId: "1:318366683329:web:a7b7fb3862a37f10850440",
-    measurementId: "G-ZD1VLD4VBH"
-  };
+  import { firebaseConfig } from "./assets/firebase-config.js";
 
   const fbApp = initializeApp(firebaseConfig);
   const auth = getAuth(fbApp);
   const db = getFirestore(fbApp);
-  try { await enableIndexedDbPersistence(db); } catch (e) { /* ok if it fails, e.g. private mode */ }
-
-  let currentUid = null;
-  let unsubStudents = null;
-  let unsubMeta = null;
-  let unsubOneStudent = null;
-  let saveTimer = null;
-  let knownStudentIds = new Set();
-  let latestMeta = { sharedFiles: [], openIds: [] };
-  let latestStudents = [];
-
-  window.doLogin = async function () {
-    const email = document.getElementById('loginEmail').value.trim();
-    const pass = document.getElementById('loginPassword').value;
-    const errEl = document.getElementById('loginError');
-    errEl.textContent = '';
-    try {
-      await signInWithEmailAndPassword(auth, email, pass);
-    } catch (e) {
-      errEl.textContent = 'Не получилось войти: ' + (e.code || e.message);
-    }
-  };
-
-  window.doSignup = async function () {
-    const email = document.getElementById('loginEmail').value.trim();
-    const pass = document.getElementById('loginPassword').value;
-    const code = document.getElementById('loginInviteCode').value.trim().toUpperCase();
-    const errEl = document.getElementById('loginError');
-    errEl.textContent = '';
-    if (pass.length < 6) { errEl.textContent = 'Пароль должен быть не короче 6 символов'; return; }
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
-      if (code) {
-        try {
-          await claimInviteCode(code, cred.user.uid);
-          await routeUser(auth.currentUser);
-        } catch (e) {
-          errEl.textContent = 'Аккаунт создан, но код не сработал: ' + (e.message || e.code) + '. Попроси у преподавателя новый код и попробуй войти снова.';
-        }
-      }
-    } catch (e) {
-      errEl.textContent = 'Не получилось создать аккаунт: ' + (e.code || e.message);
-    }
-  };
-
-  window.doLogout = async function () { await signOut(auth); };
+  try { await enableIndexedDbPersistence(db); } catch (e) {}
 
   async function claimInviteCode(code, uid) {
     const linkRef = doc(db, 'studentLinks', code);
@@ -610,145 +57,67 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     });
   }
 
-  window.__fbCreateLink = async function (code, studentId) {
-    if (!currentUid) return false;
+  async function goToRightPlace(user) {
+    const accessSnap = await getDoc(doc(db, 'studentAccess', user.uid));
+    window.location.replace(accessSnap.exists() ? 'app/student.html' : 'app/tutor.html');
+  }
+
+  function loginToEmail(login) {
+    const trimmed = login.trim().toLowerCase();
+    if (trimmed.includes('@')) return trimmed; // already a real email (e.g. Аня's existing account) — use as-is
+    const clean = trimmed.replace(/[^a-z0-9._-]/g, '');
+    return clean + '@kabinet-repetitora.local';
+  }
+
+  window.doLogin = async function () {
+    const email = loginToEmail(document.getElementById('loginEmail').value);
+    const pass = document.getElementById('loginPassword').value;
+    const errEl = document.getElementById('loginError');
+    errEl.textContent = '';
     try {
-      await setDoc(doc(db, 'studentLinks', code), {
-        tutorUid: currentUid, studentId, claimed: false, createdAt: Date.now()
-      });
-      return true;
-    } catch (e) { console.error('createLink failed', e); return false; }
-  };
-  window.__fbRevokeLink = async function (code) {
-    try { await deleteDoc(doc(db, 'studentLinks', code)); } catch (e) { /* ignore */ }
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (e) {
+      errEl.textContent = 'Не получилось войти: ' + (e.code || e.message);
+    }
   };
 
-  function pushSaveToFirestore() {
-    if (!currentUid) return;
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(async () => {
-      const currentIds = new Set((data.students || []).map(s => s.id));
-      for (const id of knownStudentIds) {
-        if (!currentIds.has(id)) {
-          deleteDoc(doc(db, 'users', currentUid, 'students', id)).catch(() => {});
+  window.doSignup = async function () {
+    const rawLogin = document.getElementById('loginEmail').value.trim();
+    const email = loginToEmail(rawLogin);
+    const pass = document.getElementById('loginPassword').value;
+    const code = document.getElementById('loginInviteCode').value.trim().toUpperCase();
+    const errEl = document.getElementById('loginError');
+    errEl.textContent = '';
+    if (!rawLogin) { errEl.textContent = 'Впиши логин'; return; }
+    if (pass.length < 6) { errEl.textContent = 'Пароль должен быть не короче 6 символов'; return; }
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      if (code) {
+        try {
+          await claimInviteCode(code, cred.user.uid);
+        } catch (e) {
+          errEl.textContent = 'Аккаунт создан, но код не сработал: ' + (e.message || e.code) + '. Попроси у преподавателя новый код.';
+          return;
         }
       }
-      knownStudentIds = currentIds;
-      (data.students || []).forEach(s => {
-        setDoc(doc(db, 'users', currentUid, 'students', s.id), s).catch((e) => console.error('save student failed', e));
-      });
-      setDoc(doc(db, 'users', currentUid, 'appdata', 'meta'), {
-        sharedFiles: data.sharedFiles || [], openIds: data.openIds || []
-      }).catch((e) => console.error('save meta failed', e));
-    }, 400);
-  }
-  window.__firestoreSave = pushSaveToFirestore;
-
-  async function migrateLegacyIfNeeded(uid) {
-    try {
-      const legacyRef = doc(db, 'users', uid, 'appdata', 'main');
-      const legacySnap = await getDoc(legacyRef);
-      if (!legacySnap.exists()) return;
-      const legacy = migrate(legacySnap.data());
-      for (const s of (legacy.students || [])) {
-        await setDoc(doc(db, 'users', uid, 'students', s.id), s);
-      }
-      await setDoc(doc(db, 'users', uid, 'appdata', 'meta'), {
-        sharedFiles: legacy.sharedFiles || [], openIds: legacy.openIds || []
-      });
-      await deleteDoc(legacyRef);
-    } catch (e) { console.error('legacy migration failed', e); }
-  }
-
-  function startTutorSync(uid) {
-    let studentsLoaded = false, metaLoaded = false;
-    const tryRender = () => {
-      if (!studentsLoaded || !metaLoaded) return;
-      data = { students: latestStudents, sharedFiles: latestMeta.sharedFiles, openIds: latestMeta.openIds };
-      knownStudentIds = new Set(latestStudents.map(s => s.id));
-      try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
-      render();
-    };
-
-    unsubStudents = onSnapshot(collection(db, 'users', uid, 'students'), (snap) => {
-      latestStudents = snap.docs.map(d => migrateStudent(d.data()));
-      studentsLoaded = true;
-      tryRender();
-    }, (err) => console.error('students sync error', err));
-
-    unsubMeta = onSnapshot(doc(db, 'users', uid, 'appdata', 'meta'), (snap) => {
-      latestMeta = snap.exists() ? snap.data() : { sharedFiles: [], openIds: [] };
-      metaLoaded = true;
-      tryRender();
-    }, (err) => console.error('meta sync error', err));
-  }
-
-  function migrateStudent(s){
-    if(!Array.isArray(s.messengers)){
-      s.messengers = s.messenger ? [{id:'m1', label:'', url:s.messenger}] : [];
+      await goToRightPlace(cred.user);
+    } catch (e) {
+      errEl.textContent = 'Не получилось создать аккаунт: ' + (e.code || e.message);
     }
-    delete s.messenger;
-    return s;
-  }
+  };
 
-  async function startStudentView(uid) {
-    const accessSnap = await getDoc(doc(db, 'studentAccess', uid));
-    if (!accessSnap.exists()) { renderStudentView(null, []); return; }
-    const { tutorUid, studentId } = accessSnap.data();
-    const studentRef = doc(db, 'users', tutorUid, 'students', studentId);
-    const metaRef = doc(db, 'users', tutorUid, 'appdata', 'meta');
-    let studentData = null, metaData = { sharedFiles: [] };
-    unsubOneStudent = onSnapshot(studentRef, (snap) => {
-      studentData = snap.exists() ? migrateStudent(snap.data()) : null;
-      renderStudentView(studentData, metaData.sharedFiles);
-    }, () => renderStudentView(null, []));
-    onSnapshot(metaRef, (snap) => {
-      metaData = snap.exists() ? snap.data() : { sharedFiles: [] };
-      renderStudentView(studentData, metaData.sharedFiles);
-    });
-  }
-
-  async function routeUser(user) {
-    const loading = document.getElementById('loadingScreen');
-    const gate = document.getElementById('loginGate');
-    const appRoot = document.getElementById('appRoot');
-    const studentRoot = document.getElementById('studentRoot');
-    appRoot.style.display = 'none';
-    studentRoot.style.display = 'none';
-    gate.style.display = 'none';
-    loading.style.display = 'flex';
-    if (unsubStudents) { unsubStudents(); unsubStudents = null; }
-    if (unsubMeta) { unsubMeta(); unsubMeta = null; }
-    if (unsubOneStudent) { unsubOneStudent(); unsubOneStudent = null; }
-
-    if (!user) {
-      currentUid = null;
-      loading.style.display = 'none';
-      appRoot.style.display = 'none';
-      studentRoot.style.display = 'none';
-      gate.style.display = 'flex';
-      return;
-    }
-
-    currentUid = user.uid;
-    const accessSnap = await getDoc(doc(db, 'studentAccess', user.uid));
-    loading.style.display = 'none';
-
-    if (accessSnap.exists()) {
-      gate.style.display = 'none';
-      appRoot.style.display = 'none';
-      studentRoot.style.display = 'block';
-      startStudentView(user.uid);
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      await goToRightPlace(user);
     } else {
-      gate.style.display = 'none';
-      studentRoot.style.display = 'none';
-      appRoot.style.display = 'block';
-      await migrateLegacyIfNeeded(user.uid);
-      startTutorSync(user.uid);
+      document.getElementById('loadingScreen').style.display = 'none';
+      document.getElementById('loginGate').style.display = 'flex';
     }
-  }
+  });
 
-  onAuthStateChanged(auth, (user) => { routeUser(user); });
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+  }
 </script>
 </body>
 </html>
