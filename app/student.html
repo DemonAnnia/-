@@ -21,7 +21,7 @@
 <script>
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
-function renderStudentView(student, sharedFiles){
+function renderStudentView(student, materials){
   const root = document.getElementById('studentRoot');
   document.getElementById('loadingScreen').style.display = 'none';
   root.style.display = 'block';
@@ -29,7 +29,7 @@ function renderStudentView(student, sharedFiles){
     root.innerHTML = `<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; text-align:center; color:#5A6472;">Не получилось найти твои данные. Попроси преподавателя проверить код приглашения.<br><br><a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>`;
     return;
   }
-  const allFiles = [...(student.files||[]), ...(sharedFiles||[])];
+  const allFiles = materials || [];
   root.innerHTML = `
     <div style="min-height:100vh; background:#F3F5F1; padding:1.5rem;">
       <div style="max-width:26rem; margin:0 auto;">
@@ -53,7 +53,9 @@ function renderStudentView(student, sharedFiles){
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-  import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import {
+    getFirestore, doc, getDoc, onSnapshot, collection, query, where
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { firebaseConfig } from "../assets/firebase-config.js";
 
   const fbApp = initializeApp(firebaseConfig);
@@ -76,18 +78,29 @@ function renderStudentView(student, sharedFiles){
 
     const { tutorUid, studentId } = accessSnap.data();
     const studentRef = doc(db, 'users', tutorUid, 'students', studentId);
-    const metaRef = doc(db, 'users', tutorUid, 'appdata', 'meta');
-    let studentData = null, sharedFiles = [];
+    let studentData = null;
+    let materialsAll = [], materialsMine = [];
+
+    function renderMerged(){
+      const byId = {};
+      [...materialsAll, ...materialsMine].forEach(m => { byId[m.id] = m; });
+      renderStudentView(studentData, Object.values(byId));
+    }
 
     onSnapshot(studentRef, (snap) => {
       studentData = snap.exists() ? migrateStudent(snap.data()) : null;
-      renderStudentView(studentData, sharedFiles);
+      renderMerged();
     }, () => renderStudentView(null, []));
 
-    onSnapshot(metaRef, (snap) => {
-      sharedFiles = snap.exists() ? (snap.data().sharedFiles || []) : [];
-      renderStudentView(studentData, sharedFiles);
-    });
+    const materialsCol = collection(db, 'users', tutorUid, 'materials');
+    onSnapshot(query(materialsCol, where('visibleToAll', '==', true)), (snap) => {
+      materialsAll = snap.docs.map(d => d.data());
+      renderMerged();
+    }, (err) => console.error('materials(all) sync error', err));
+    onSnapshot(query(materialsCol, where('studentIds', 'array-contains', studentId)), (snap) => {
+      materialsMine = snap.docs.map(d => d.data());
+      renderMerged();
+    }, (err) => console.error('materials(mine) sync error', err));
   });
 
   if ("serviceWorker" in navigator) {

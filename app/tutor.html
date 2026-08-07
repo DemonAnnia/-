@@ -15,46 +15,44 @@
 </head>
 <body>
 <div id="loadingScreen" style="min-height:100vh; display:flex; align-items:center; justify-content:center; color:#8A93A0; font-family:'IBM Plex Sans',sans-serif; font-size:0.875rem;">Загружаю…</div>
+
+<div id="backdrop" class="backdrop" onclick="closeDrawer()"></div>
+<div id="drawer" class="drawer">
+  <div class="drawer-title">📘 Меню</div>
+  <div class="drawer-section">💻 Онлайн</div>
+  <div id="drawerOnline"></div>
+  <div class="drawer-section">🤝 Очно</div>
+  <div id="drawerInperson"></div>
+  <hr class="drawer-hr">
+  <button class="drawer-item" onclick="showStudentsView()">👥 Все ученики</button>
+  <button class="drawer-item" onclick="showMaterialsView()">📚 Материалы</button>
+  <hr class="drawer-hr">
+  <button class="drawer-item" onclick="addStudent(); closeDrawer();">➕ Добавить ученика</button>
+  <button class="drawer-item" onclick="syncBaseLinks()">🔄 Обновить базовые ссылки из файла</button>
+  <button class="drawer-item" onclick="downloadBackup()">💾 Скачать резервную копию</button>
+  <button class="drawer-item" onclick="document.getElementById('restoreFile').click()">📂 Загрузить из копии</button>
+  <input id="restoreFile" type="file" accept="application/json" style="display:none;" onchange="restoreBackup(this)">
+  <button class="drawer-item" onclick="toggleAccountPanel()">⚙️ Пароль</button>
+  <div id="accountPanel" style="display:none; background:#F6F7F5; border-radius:0.625rem; padding:0.75rem; margin:0.375rem 0;">
+    <div style="font-size:0.75rem; color:#5A6472; margin-bottom:0.5rem;">Чтобы сменить пароль, подтверди текущим</div>
+    <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+    <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+    <button onclick="changePassword()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сменить пароль</button>
+    <div id="accMsg" style="font-size:0.75rem; margin-top:0.375rem;"></div>
+  </div>
+  <button id="installBtnDrawer" class="drawer-item" style="display:none;">📲 Установить приложение</button>
+  <hr class="drawer-hr">
+  <button class="drawer-item" onclick="doLogout()" style="color:#C0392B;">🚪 Выйти</button>
+</div>
+
 <div id="appRoot" style="display:none;">
 <div class="wrap">
-  <h1>📘 Перед уроком</h1>
-  <div class="sub">Ссылки, доски и материалы — по каждому ученику. Синхронизируется на всех устройствах. <a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a> · <a href="#" onclick="toggleAccountPanel();return false;" style="color:#5A6472;">⚙️ Логин и пароль</a></div>
-  <div id="accountPanel" style="display:none; background:#fff; border-radius:0.875rem; padding:0.875rem; margin-bottom:1.125rem; border:1px solid #E7E9EC;">
-    <div style="font-size:0.78125rem; color:#5A6472; margin-bottom:0.625rem;">Чтобы что-то поменять, подтверди текущим паролем</div>
-    <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
-    <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem;">
-      <input id="accNewLogin" type="text" placeholder="новый логин (или email)" style="flex:1; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-      <button onclick="changeLogin()" style="padding:0.5rem 0.75rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.8125rem; font-weight:600; cursor:pointer; white-space:nowrap;">Сменить</button>
-    </div>
-    <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem;">
-      <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="flex:1; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-      <button onclick="changePassword()" style="padding:0.5rem 0.75rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.8125rem; font-weight:600; cursor:pointer; white-space:nowrap;">Сменить</button>
-    </div>
-    <div id="accMsg" style="font-size:0.78125rem;"></div>
+  <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.25rem;">
+    <button class="hamburger" onclick="openDrawer()">☰</button>
+    <h1 style="margin:0;">📘 Перед уроком</h1>
   </div>
-  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.125rem;">
-    <button onclick="syncBaseLinks()" style="font-size:0.75rem; padding:0.375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer;">🔄 Обновить базовые ссылки из файла</button>
-    <span id="syncMsg" style="font-size:0.75rem; color:#2E7D4F;"></span>
-  </div>
-  <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1.125rem; flex-wrap:wrap;">
-    <button onclick="downloadBackup()" style="font-size:0.75rem; padding:0.375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer;">💾 Скачать резервную копию</button>
-    <button onclick="document.getElementById('restoreFile').click()" style="font-size:0.75rem; padding:0.375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer;">📂 Загрузить из копии</button>
-    <input id="restoreFile" type="file" accept="application/json" style="display:none;" onchange="restoreBackup(this)">
-  </div>
-  <button id="installBtn" style="display:none; width:100%; align-items:center; justify-content:center; gap:0.5rem; padding:0.625rem 0; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-size:0.875rem; font-weight:600; margin-bottom:1.125rem; cursor:pointer;">📲 Установить приложение на это устройство</button>
-  <div id="students"></div>
-
-  <button class="addstudent" onclick="addStudent()">+ Добавить ученика</button>
-  <div class="sharedbox">
-    <div class="shtitle">👥 Общие материалы</div>
-    <div class="shhint">Файлы отсюда видно у каждого ученика — удобно, когда один материал в итоге пригодился всем</div>
-    <div id="sharedFiles"></div>
-    <div class="fileadd">
-      <input class="fname" id="sh-name" type="text" placeholder="название">
-      <input class="furl" id="sh-url" type="text" placeholder="ссылка на файл">
-      <button class="addfilebtn" onclick="addSharedFile()">+</button>
-    </div>
-  </div>
+  <div class="sub" style="margin-top:0.375rem;">Ссылки, доски и материалы — по каждому ученику. Синхронизируется на всех устройствах.</div>
+  <div id="mainArea"></div>
 </div>
 </div>
 
@@ -227,22 +225,9 @@ async function revokeInviteCode(studentId){
 }
 
 function addStudent(){
-  data.students.push({id:uid(), name:'Новый ученик', grade:'', format: activeTab==='inperson' ? 'Очно' : 'Онлайн',
+  data.students.push({id:uid(), name:'Новый ученик', grade:'', format:'Онлайн',
     accent: data.students.length % ACCENTS.length, messengers:[], boardLink:'', callLink:'',
     needsPaymentReport:true, subjects:[], files:[]});
-  save();
-}
-function addFileTo(id){
-  const s = data.students.find(x=>x.id===id);
-  const nameEl = document.getElementById('fname-'+id);
-  const urlEl = document.getElementById('furl-'+id);
-  if(!urlEl.value) return;
-  s.files.push({id:uid(), name:nameEl.value, url:urlEl.value});
-  save();
-}
-function removeFileFrom(sid, fid){
-  const s = data.students.find(x=>x.id===sid);
-  s.files = s.files.filter(f=>f.id!==fid);
   save();
 }
 function addMessenger(id){
@@ -257,17 +242,6 @@ function addMessenger(id){
 function removeMessenger(sid, mid){
   const s = data.students.find(x=>x.id===sid);
   s.messengers = s.messengers.filter(m=>m.id!==mid);
-  save();
-}
-function addSharedFile(){
-  const nameEl = document.getElementById('sh-name');
-  const urlEl = document.getElementById('sh-url');
-  if(!urlEl.value) return;
-  data.sharedFiles.push({id:uid(), name:nameEl.value, url:urlEl.value});
-  save();
-}
-function removeSharedFile(fid){
-  data.sharedFiles = data.sharedFiles.filter(f=>f.id!==fid);
   save();
 }
 
@@ -286,11 +260,15 @@ function markDone(id){
 }
 
 let studentMsgOpen = {};
+function materialsFor(studentId){
+  return (data.materials||[]).filter(m => m.visibleToAll || (m.studentIds||[]).includes(studentId));
+}
+
 function buildStudentMessage(s){
   const lines = [];
   if(s.format!=='Очно' && s.callLink) lines.push(`Подключиться к занятию: ${s.callLink}`);
   if(s.format!=='Очно' && s.boardLink) lines.push(`Доска: ${s.boardLink}`);
-  const allFiles = [...s.files, ...data.sharedFiles];
+  const allFiles = materialsFor(s.id);
   if(allFiles.length){
     lines.push('Материалы к уроку:');
     allFiles.forEach(f=> lines.push(`- ${f.name ? f.name+': ' : ''}${f.url}`));
@@ -301,18 +279,6 @@ function buildStudentMessage(s){
 function toggleStudentMsg(id){
   if(studentMsgOpen[id]) delete studentMsgOpen[id]; else studentMsgOpen[id] = true;
   render();
-}
-
-
-function renderFileRows(files, sid, extraOnRemove){
-  if(files.length===0) return '<div style="font-size:12.5px;color:#9BA3AE;margin-bottom:8px;">Пока пусто</div>';
-  return files.map(f=>`
-    <div class="filerow">
-      <span>📄</span>
-      <a href="${esc(f.url)}" target="_blank" rel="noreferrer">${esc(f.name||f.url)}</a>
-      <button class="iconbtn" onclick="copyText('${esc(f.url)}', this)">⧉</button>
-      ${extraOnRemove ? `<button class="iconbtn" onclick="${extraOnRemove}('${sid?sid+"','":""}${f.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>` : ''}
-    </div>`).join('');
 }
 
 let msgTextById = {};
@@ -384,38 +350,170 @@ function cardHTML(s){
             <button class="iconbtn" onclick="revokeInviteCode('${s.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
           </div>` : `
           <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.625rem;" onclick="generateInviteCode('${s.id}')">🔑 Создать код для входа</button>`}
-                <div class="filelabel">Материалы только для этого ученика</div>
-        ${renderFileRows(s.files, s.id, "removeFileFrom")}
-        <div class="fileadd">
-          <input class="fname" type="text" id="fname-${s.id}" placeholder="название">
-          <input class="furl" type="text" id="furl-${s.id}" placeholder="ссылка на файл">
-          <button class="addfilebtn" onclick="addFileTo('${s.id}')">+</button>
-        </div>
-        ${data.sharedFiles.length? `<div style="margin-top:12px;"><div class="filelabel">Общие материалы (видны всем)</div>${renderFileRows(data.sharedFiles)}</div>` : ''}
+        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.375rem;" onclick="showMaterialsView('${s.id}')">📚 Материалы для ${esc(s.name)}</button>
         <button class="delbtn" onclick="deleteStudent('${s.id}')">🗑 Удалить ученика</button>
       </div>
     </div>`;
 }
 
-let activeTab = 'online';
-function setTab(tab){ activeTab = tab; render(); }
+let viewMode = 'students'; // 'students' | 'materials'
+let focusedStudentId = null;
+let materialPicker = { visibleToAll: false, studentIds: [] };
+let editingAccessFor = null;
 
-function render(){
-  const wrap = document.getElementById('students');
+function openDrawer(){ document.getElementById('drawer').classList.add('open'); document.getElementById('backdrop').classList.add('open'); }
+function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('backdrop').classList.remove('open'); }
+function selectStudentFromDrawer(id){ focusedStudentId = id; viewMode = 'students'; closeDrawer(); render(); }
+function showStudentsView(){ viewMode = 'students'; focusedStudentId = null; closeDrawer(); render(); }
+function showMaterialsView(studentId){
+  viewMode = 'materials';
+  editingAccessFor = null;
+  materialPicker = studentId ? { visibleToAll:false, studentIds:[studentId] } : { visibleToAll:false, studentIds:[] };
+  closeDrawer();
+  render();
+}
+
+function renderDrawerLists(){
   const online = data.students.filter(s => s.format !== 'Очно');
   const inperson = data.students.filter(s => s.format === 'Очно');
-  const list = activeTab === 'online' ? online : inperson;
-
-  const tabsHtml = `
-    <div style="display:flex; gap:0.5rem; margin-bottom:0.875rem;">
-      <button onclick="setTab('online')" style="flex:1; padding:0.5rem 0; border-radius:0.625rem; font-size:0.84375rem; font-weight:700; border:1px solid ${activeTab==='online'?'#1F2A3D':'#C9D2DB'}; background:${activeTab==='online'?'#1F2A3D':'#fff'}; color:${activeTab==='online'?'#fff':'#5A6472'}; cursor:pointer;">💻 Онлайн</button>
-      <button onclick="setTab('inperson')" style="flex:1; padding:0.5rem 0; border-radius:0.625rem; font-size:0.84375rem; font-weight:700; border:1px solid ${activeTab==='inperson'?'#1F2A3D':'#C9D2DB'}; background:${activeTab==='inperson'?'#1F2A3D':'#fff'}; color:${activeTab==='inperson'?'#fff':'#5A6472'}; cursor:pointer;">🤝 Очно</button>
-    </div>`;
-
-  wrap.innerHTML = tabsHtml + (list.length ? list.map(cardHTML).join('') : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`);
-
-  document.getElementById('sharedFiles').innerHTML = renderFileRows(data.sharedFiles, null, "removeSharedFile");
+  const row = s => {
+    const accent = ACCENTS[s.accent] || ACCENTS[0];
+    return `<button class="drawer-item ${focusedStudentId===s.id?'active':''}" onclick="selectStudentFromDrawer('${s.id}')"><span class="dot" style="background:${accent.ink}"></span>${esc(s.name)}</button>`;
+  };
+  document.getElementById('drawerOnline').innerHTML = online.length ? online.map(row).join('') : '<div style="font-size:0.78125rem;color:#9BA3AE;padding:0.375rem 0.625rem;">Пока никого</div>';
+  document.getElementById('drawerInperson').innerHTML = inperson.length ? inperson.map(row).join('') : '<div style="font-size:0.78125rem;color:#9BA3AE;padding:0.375rem 0.625rem;">Пока никого</div>';
 }
+
+function togglePickerAll(){
+  materialPicker.visibleToAll = !materialPicker.visibleToAll;
+  render();
+}
+function togglePickerStudent(id){
+  const i = materialPicker.studentIds.indexOf(id);
+  if(i>=0) materialPicker.studentIds.splice(i,1); else materialPicker.studentIds.push(id);
+  render();
+}
+function pickerHTML(picker, prefix){
+  const allPicked = picker.visibleToAll;
+  return `<div class="mat-picker">
+    <span class="mat-pill ${allPicked?'picked':''}" onclick="${prefix}TogglePickerAll()">👥 Все ученики</span>
+    ${data.students.map(s=>`<span class="mat-pill ${!allPicked && picker.studentIds.includes(s.id)?'picked':''}" style="${allPicked?'opacity:.4;pointer-events:none;':''}" onclick="${prefix}TogglePickerStudent('${s.id}')">${esc(s.name)}</span>`).join('')}
+  </div>`;
+}
+
+function addMaterial(){
+  const name = document.getElementById('matName').value.trim();
+  const url = document.getElementById('matUrl').value.trim();
+  if(!url){ return; }
+  if(!materialPicker.visibleToAll && materialPicker.studentIds.length===0){
+    alert('Выбери, кому виден материал — «Все ученики» или хотя бы одного конкретного');
+    return;
+  }
+  const material = { id: uid(), name, url, visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds] };
+  data.materials = [...(data.materials||[]), material];
+  if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(material);
+  document.getElementById('matName').value = '';
+  document.getElementById('matUrl').value = '';
+  materialPicker = { visibleToAll:false, studentIds:[] };
+  try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
+  render();
+}
+function deleteMaterial(id){
+  data.materials = (data.materials||[]).filter(m=>m.id!==id);
+  if(window.__fbDeleteMaterial) window.__fbDeleteMaterial(id);
+  try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
+  render();
+}
+function startEditAccess(id){
+  const m = (data.materials||[]).find(x=>x.id===id);
+  editingAccessFor = id;
+  materialPicker = { visibleToAll: !!m.visibleToAll, studentIds: [...(m.studentIds||[])] };
+  render();
+}
+function saveEditAccess(id){
+  const m = (data.materials||[]).find(x=>x.id===id);
+  if(!m) return;
+  m.visibleToAll = materialPicker.visibleToAll;
+  m.studentIds = materialPicker.visibleToAll ? [] : [...materialPicker.studentIds];
+  if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(m);
+  editingAccessFor = null;
+  try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
+  render();
+}
+function cancelEditAccess(){ editingAccessFor = null; render(); }
+
+function accessLabel(m){
+  if(m.visibleToAll) return '<span class="mat-access-chip">Все ученики</span>';
+  const names = (m.studentIds||[]).map(id => { const s = data.students.find(x=>x.id===id); return s ? s.name : '?'; });
+  return names.length ? names.map(n=>`<span class="mat-access-chip">${esc(n)}</span>`).join('') : '<span class="mat-access-chip" style="background:#F6E4E1;color:#C0392B;">Никому не видно</span>';
+}
+
+function renderMaterialsView(){
+  const list = data.materials || [];
+  const addPicker = pickerHTML(materialPicker, 'window.');
+  const itemsHtml = list.length===0
+    ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.5rem 0;">Пока ни одного материала</div>'
+    : list.map(m => `
+      <div class="matcard">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span>📄</span>
+          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
+          <button class="iconbtn" onclick="copyText('${esc(m.url)}', this)">⧉</button>
+          <button class="iconbtn" onclick="deleteMaterial('${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+        </div>
+        <div style="margin-top:0.5rem;">
+          ${editingAccessFor===m.id ? `
+            ${pickerHTML(materialPicker, 'window.')}
+            <div style="display:flex; gap:0.375rem; margin-top:0.375rem;">
+              <button class="btn btn-done" style="flex:1;" onclick="saveEditAccess('${m.id}')">✓ Сохранить</button>
+              <button class="btn btn-off" style="flex:1;" onclick="cancelEditAccess()">Отмена</button>
+            </div>
+          ` : `
+            <div>${accessLabel(m)}</div>
+            <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; padding:0.25rem 0; margin-top:0.25rem; cursor:pointer; text-decoration:underline;" onclick="startEditAccess('${m.id}')">✏️ Изменить доступ</button>
+          `}
+        </div>
+      </div>`).join('');
+
+  return `
+    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
+      <button class="hamburger" onclick="showStudentsView()" title="Назад к ученикам">←</button>
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">📚 Материалы</div>
+    </div>
+    <div class="matcard">
+      <div class="filelabel">Добавить новый материал</div>
+      <input id="matName" type="text" placeholder="название" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <input id="matUrl" type="text" placeholder="ссылка на файл" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <div class="filelabel" style="margin-top:0.375rem;">Кому видно</div>
+      ${addPicker}
+      <button class="btn btn-done" style="width:100%; margin-top:0.375rem;" onclick="addMaterial()">+ Добавить</button>
+    </div>
+    ${itemsHtml}
+  `;
+}
+
+function render(){
+  renderDrawerLists();
+  const wrap = document.getElementById('mainArea');
+
+  if(viewMode === 'materials'){
+    wrap.innerHTML = renderMaterialsView();
+    return;
+  }
+
+  let list = data.students;
+  let backLink = '';
+  if(focusedStudentId){
+    list = data.students.filter(s => s.id === focusedStudentId);
+    backLink = `<button class="hamburger" onclick="showStudentsView()" title="Все ученики" style="margin-bottom:0.75rem;">←</button>`;
+  }
+  wrap.innerHTML = backLink + (list.length ? list.map(cardHTML).join('') : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`)
+    + (focusedStudentId ? '' : `<button class="addstudent" onclick="addStudent()">+ Добавить ученика</button>`);
+}
+
+// expose picker toggles for the inline onclick handlers in pickerHTML()
+window.TogglePickerAll = togglePickerAll;
+window.TogglePickerStudent = togglePickerStudent;
 
 render();
 
@@ -436,7 +534,7 @@ if ("serviceWorker" in navigator) {
 
 // custom install button — more reliable than waiting for the browser to surface its own prompt
 let deferredInstallPrompt = null;
-const installBtn = document.getElementById('installBtn');
+const installBtn = document.getElementById('installBtnDrawer');
 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
@@ -449,6 +547,7 @@ installBtn.addEventListener('click', async () => {
   await deferredInstallPrompt.userChoice;
   deferredInstallPrompt = null;
   installBtn.style.display = 'none';
+  closeDrawer();
 });
 window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
 </script>
@@ -457,7 +556,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
     getAuth, onAuthStateChanged, signOut,
-    EmailAuthProvider, reauthenticateWithCredential, updateEmail, updatePassword
+    EmailAuthProvider, reauthenticateWithCredential, updatePassword
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection
@@ -473,7 +572,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
   let unsubMeta = null;
   let saveTimer = null;
   let knownStudentIds = new Set();
-  let latestMeta = { sharedFiles: [], openIds: [] };
+  let latestMeta = { openIds: [] };
   let latestStudents = [];
 
   window.doLogout = async function () { await signOut(auth); window.location.replace('../index.html'); };
@@ -483,35 +582,10 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
   };
 
-  function loginToEmail(login) {
-    const trimmed = login.trim().toLowerCase();
-    if (trimmed.includes('@')) return trimmed;
-    const clean = trimmed.replace(/[^a-z0-9._-]/g, '');
-    return clean + '@kabinet-repetitora.local';
-  }
-
   async function reauth(currentPassword) {
     const cred = EmailAuthProvider.credential(auth.currentUser.email, currentPassword);
     await reauthenticateWithCredential(auth.currentUser, cred);
   }
-
-  window.changeLogin = async function () {
-    const curPass = document.getElementById('accCurPass').value;
-    const newLoginRaw = document.getElementById('accNewLogin').value.trim();
-    const msgEl = document.getElementById('accMsg');
-    msgEl.textContent = '';
-    if (!curPass || !newLoginRaw) { msgEl.style.color = '#C0392B'; msgEl.textContent = 'Заполни текущий пароль и новый логин'; return; }
-    try {
-      await reauth(curPass);
-      await updateEmail(auth.currentUser, loginToEmail(newLoginRaw));
-      msgEl.style.color = '#2E7D4F';
-      msgEl.textContent = 'Готово! Теперь входи под: ' + newLoginRaw;
-      document.getElementById('accNewLogin').value = '';
-    } catch (e) {
-      msgEl.style.color = '#C0392B';
-      msgEl.textContent = 'Не получилось: ' + (e.code || e.message);
-    }
-  };
 
   window.changePassword = async function () {
     const curPass = document.getElementById('accCurPass').value;
@@ -543,6 +617,17 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     try { await deleteDoc(doc(db, 'studentLinks', code)); } catch (e) {}
   };
 
+  window.__fbUpsertMaterial = async function (material) {
+    if (!currentUid) return;
+    try { await setDoc(doc(db, 'users', currentUid, 'materials', material.id), material); }
+    catch (e) { console.error('upsert material failed', e); }
+  };
+  window.__fbDeleteMaterial = async function (id) {
+    if (!currentUid) return;
+    try { await deleteDoc(doc(db, 'users', currentUid, 'materials', id)); }
+    catch (e) { console.error('delete material failed', e); }
+  };
+
   function pushSaveToFirestore() {
     if (!currentUid) return;
     clearTimeout(saveTimer);
@@ -556,7 +641,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
         setDoc(doc(db, 'users', currentUid, 'students', s.id), s).catch((e) => console.error('save student failed', e));
       });
       setDoc(doc(db, 'users', currentUid, 'appdata', 'meta'), {
-        sharedFiles: data.sharedFiles || [], openIds: data.openIds || []
+        openIds: data.openIds || []
       }).catch((e) => console.error('save meta failed', e));
     }, 400);
   }
@@ -577,18 +662,31 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
       for (const s of (legacy.students || [])) {
         await setDoc(doc(db, 'users', uid, 'students', s.id), s);
       }
-      await setDoc(doc(db, 'users', uid, 'appdata', 'meta'), {
-        sharedFiles: legacy.sharedFiles || [], openIds: legacy.openIds || []
-      });
+      await setDoc(doc(db, 'users', uid, 'appdata', 'meta'), { openIds: legacy.openIds || [] });
+      // migrate old shared/per-student files into the new unified materials catalog
+      for (const f of (legacy.sharedFiles || [])) {
+        await setDoc(doc(db, 'users', uid, 'materials', f.id || cryptoRandomId()), {
+          id: f.id, name: f.name || '', url: f.url, visibleToAll: true, studentIds: []
+        });
+      }
+      for (const s of (legacy.students || [])) {
+        for (const f of (s.files || [])) {
+          await setDoc(doc(db, 'users', uid, 'materials', f.id || cryptoRandomId()), {
+            id: f.id, name: f.name || '', url: f.url, visibleToAll: false, studentIds: [s.id]
+          });
+        }
+      }
       await deleteDoc(legacyRef);
     } catch (e) { console.error('legacy migration failed', e); }
   }
+  function cryptoRandomId(){ return Math.random().toString(36).slice(2,9); }
 
   function startTutorSync(uid) {
-    let studentsLoaded = false, metaLoaded = false;
+    let studentsLoaded = false, metaLoaded = false, materialsLoaded = false;
+    let latestMaterials = [];
     const tryRender = () => {
-      if (!studentsLoaded || !metaLoaded) return;
-      data = { students: latestStudents, sharedFiles: latestMeta.sharedFiles, openIds: latestMeta.openIds };
+      if (!studentsLoaded || !metaLoaded || !materialsLoaded) return;
+      data = { students: latestStudents, materials: latestMaterials, openIds: latestMeta.openIds, sharedFiles: [] };
       knownStudentIds = new Set(latestStudents.map(s => s.id));
       try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
       document.getElementById('loadingScreen').style.display = 'none';
@@ -601,10 +699,15 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
       tryRender();
     }, (err) => console.error('students sync error', err));
     unsubMeta = onSnapshot(doc(db, 'users', uid, 'appdata', 'meta'), (snap) => {
-      latestMeta = snap.exists() ? snap.data() : { sharedFiles: [], openIds: [] };
+      latestMeta = snap.exists() ? snap.data() : { openIds: [] };
       metaLoaded = true;
       tryRender();
     }, (err) => console.error('meta sync error', err));
+    onSnapshot(collection(db, 'users', uid, 'materials'), (snap) => {
+      latestMaterials = snap.docs.map(d => d.data());
+      materialsLoaded = true;
+      tryRender();
+    }, (err) => console.error('materials sync error', err));
   }
 
   onAuthStateChanged(auth, async (user) => {
