@@ -585,6 +585,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
       if (code) {
         try {
           await claimInviteCode(code, cred.user.uid);
+          await routeUser(auth.currentUser);
         } catch (e) {
           errEl.textContent = 'Аккаунт создан, но код не сработал: ' + (e.message || e.code) + '. Попроси у преподавателя новый код и попробуй войти снова.';
         }
@@ -707,18 +708,22 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     });
   }
 
-  onAuthStateChanged(auth, async (user) => {
+  async function routeUser(user) {
     const loading = document.getElementById('loadingScreen');
     const gate = document.getElementById('loginGate');
     const appRoot = document.getElementById('appRoot');
     const studentRoot = document.getElementById('studentRoot');
+    appRoot.style.display = 'none';
+    studentRoot.style.display = 'none';
+    gate.style.display = 'none';
+    loading.style.display = 'flex';
     if (unsubStudents) { unsubStudents(); unsubStudents = null; }
     if (unsubMeta) { unsubMeta(); unsubMeta = null; }
     if (unsubOneStudent) { unsubOneStudent(); unsubOneStudent = null; }
-    loading.style.display = 'none';
 
     if (!user) {
       currentUid = null;
+      loading.style.display = 'none';
       appRoot.style.display = 'none';
       studentRoot.style.display = 'none';
       gate.style.display = 'flex';
@@ -727,6 +732,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
 
     currentUid = user.uid;
     const accessSnap = await getDoc(doc(db, 'studentAccess', user.uid));
+    loading.style.display = 'none';
 
     if (accessSnap.exists()) {
       gate.style.display = 'none';
@@ -740,7 +746,9 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
       await migrateLegacyIfNeeded(user.uid);
       startTutorSync(user.uid);
     }
-  });
+  }
+
+  onAuthStateChanged(auth, (user) => { routeUser(user); });
 </script>
 </body>
 </html>
