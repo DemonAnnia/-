@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Тест загрузки на Timeweb</title>
+<style>
+  body { font-family: sans-serif; max-width: 32rem; margin: 2rem auto; padding: 0 1rem; }
+  input, button { font-size: 1rem; padding: 0.5rem; margin-bottom: 0.5rem; width: 100%; box-sizing: border-box; }
+  button { cursor: pointer; }
+  #log { white-space: pre-wrap; background: #f4f4f4; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; font-family: monospace; font-size: 0.85rem; }
+  .ok { color: green; } .err { color: red; }
+</style>
+</head>
+<body>
+<h2>🧪 Тест загрузки файла на Timeweb</h2>
+<p style="color:#888; font-size:0.85rem;">Временная страница только для проверки. После теста — удалить этот файл с GitHub.</p>
+
+<div id="loginBox">
+  <h3>1. Войти как тьютор</h3>
+  <input id="email" type="text" placeholder="логин или email">
+  <input id="password" type="password" placeholder="пароль">
+  <button onclick="doLogin()">Войти</button>
+</div>
+
+<div id="uploadBox" style="display:none;">
+  <h3>2. Выбрать файл и загрузить</h3>
+  <input id="fileInput" type="file">
+  <button onclick="doUpload()">Загрузить на Timeweb</button>
+</div>
+
+<div id="log"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  // те же данные, что в assets/firebase-config.js основного проекта
+  const firebaseConfig = {
+    apiKey: "AIzaSyDLHlDB2VzjNKC84a9Uyvgm0J4iXe0C3Qc",
+    authDomain: "kabinet-repetitora.firebaseapp.com",
+    projectId: "kabinet-repetitora",
+    storageBucket: "kabinet-repetitora.firebasestorage.app",
+    messagingSenderId: "318366683329",
+    appId: "1:318366683329:web:a7b7fb3862a37f10850440",
+  };
+
+  // адрес тестового скрипта на Timeweb — поменяй, если технический адрес другой
+  const UPLOAD_URL = "https://ct030786.tw1.ru/upload.php";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  const log = document.getElementById('log');
+  function print(text, cls) {
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = text;
+    log.appendChild(line);
+  }
+
+  function loginToEmail(login) {
+    const trimmed = login.trim().toLowerCase();
+    if (trimmed.includes('@')) return trimmed;
+    const clean = trimmed.replace(/[^a-z0-9._-]/g, '');
+    return clean + '@kabinet-repetitora.local';
+  }
+
+  window.doLogin = async function () {
+    const email = loginToEmail(document.getElementById('email').value);
+    const pass = document.getElementById('password').value;
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      print('✅ Вход выполнен: ' + auth.currentUser.uid, 'ok');
+      document.getElementById('uploadBox').style.display = 'block';
+    } catch (e) {
+      print('❌ Ошибка входа: ' + e.code, 'err');
+    }
+  };
+
+  window.doUpload = async function () {
+    const fileInput = document.getElementById('fileInput');
+    const file = fileInput.files[0];
+    if (!file) { print('❌ Файл не выбран', 'err'); return; }
+    if (!auth.currentUser) { print('❌ Сначала войди', 'err'); return; }
+
+    print('⏳ Получаю токен...');
+    const token = await auth.currentUser.getIdToken();
+
+    print('⏳ Загружаю файл: ' + file.name + ' (' + Math.round(file.size / 1024) + ' КБ)...');
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch(UPLOAD_URL, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        print('✅ Успех! Ссылка на файл:', 'ok');
+        print(data.url, 'ok');
+        const a = document.createElement('a');
+        a.href = data.url; a.target = '_blank'; a.textContent = '→ Открыть файл';
+        log.appendChild(a);
+      } else {
+        print('❌ Сервер ответил ошибкой: ' + (data.error || res.status), 'err');
+      }
+    } catch (e) {
+      print('❌ Не удалось обратиться к серверу: ' + e.message, 'err');
+    }
+  };
+</script>
+</body>
+</html>
