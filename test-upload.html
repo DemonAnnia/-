@@ -46,6 +46,7 @@
 
   // адрес тестового скрипта на Timeweb — поменяй, если технический адрес другой
   const UPLOAD_URL = "https://ct030786.tw1.ru/upload.php";
+  const DELETE_URL = "https://ct030786.tw1.ru/delete.php";
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
@@ -103,9 +104,39 @@
         const a = document.createElement('a');
         a.href = data.url; a.target = '_blank'; a.textContent = '→ Открыть файл';
         log.appendChild(a);
+        log.appendChild(document.createElement('br'));
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '🗑 Удалить этот файл (тест delete.php)';
+        delBtn.style.marginTop = '0.5rem';
+        delBtn.onclick = () => doDelete(data.fileName);
+        log.appendChild(delBtn);
       } else {
         print('❌ Сервер ответил ошибкой: ' + (data.error || res.status), 'err');
         if (data.debug) print('🔍 debug: ' + data.debug, 'err');
+      }
+    } catch (e) {
+      print('❌ Не удалось обратиться к серверу: ' + e.message, 'err');
+    }
+  };
+
+  window.doDelete = async function (fileName) {
+    if (!auth.currentUser) { print('❌ Сначала войди', 'err'); return; }
+    print('⏳ Удаляю файл: ' + fileName + '...');
+    const token = await auth.currentUser.getIdToken();
+    const formData = new FormData();
+    formData.append('fileName', fileName);
+    try {
+      const res = await fetch(DELETE_URL, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        print('✅ Файл удалён' + (data.note ? ' (' + data.note + ')' : ''), 'ok');
+      } else {
+        print('❌ Ошибка удаления: ' + (data.error || res.status), 'err');
       }
     } catch (e) {
       print('❌ Не удалось обратиться к серверу: ' + e.message, 'err');
