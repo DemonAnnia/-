@@ -49,9 +49,9 @@
     appId: "1:318366683329:web:a7b7fb3862a37f10850440",
   };
 
-  // адрес тестового скрипта на Timeweb — поменяй, если технический адрес другой
-  const UPLOAD_URL = "https://ct030786.tw1.ru/upload.php";
-  const DELETE_URL = "https://ct030786.tw1.ru/delete.php";
+  // адрес тестового скрипта на Timeweb — теперь в подпапке api/
+  const UPLOAD_URL = "https://ct030786.tw1.ru/api/upload.php";
+  const DELETE_URL = "https://ct030786.tw1.ru/api/delete.php";
 
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
