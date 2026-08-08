@@ -26,6 +26,11 @@
   <h3>2. Выбрать файл и загрузить</h3>
   <input id="fileInput" type="file">
   <button onclick="doUpload()">Загрузить на Timeweb</button>
+
+  <h3>3. Тест: удалить файл по произвольному имени</h3>
+  <p style="color:#888; font-size:0.85rem;">Для проверки защиты от «побега» за пределы своей папки — попробуй, например: <code>../test.php</code> или <code>../другой-uid/файл.jpg</code></p>
+  <input id="customFileName" type="text" placeholder="имя файла для теста удаления">
+  <button onclick="doDelete(document.getElementById('customFileName').value)">Тест удаления по этому имени</button>
 </div>
 
 <div id="log"></div>
