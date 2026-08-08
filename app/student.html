@@ -15,8 +15,35 @@
 </head>
 <body>
 <div id="loadingScreen" style="min-height:100vh; display:flex; align-items:center; justify-content:center; color:#8A93A0; font-family:'IBM Plex Sans',sans-serif; font-size:0.875rem;">Загружаю…</div>
-<button id="installBtn" style="display:none; position:fixed; bottom:1rem; left:1rem; right:1rem; max-width:24rem; margin:0 auto; align-items:center; justify-content:center; gap:0.5rem; padding:0.75rem 0; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-size:0.875rem; font-weight:600; cursor:pointer; z-index:10; box-shadow:0 2px 10px rgba(0,0,0,0.15);">📲 Установить приложение на это устройство</button>
-<div id="studentRoot" style="display:none;"></div>
+<div id="notFoundOverlay" style="display:none; min-height:100vh; align-items:center; justify-content:center; padding:1.5rem; text-align:center; color:#5A6472; position:fixed; inset:0; background:#F3F5F1;">Не получилось найти твои данные. Попроси преподавателя проверить код приглашения.<br><br><a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>
+
+<div id="backdrop" class="backdrop" onclick="closeDrawer()"></div>
+<div id="drawer" class="drawer">
+  <div class="drawer-title">📘 Меню</div>
+  <button class="drawer-item" onclick="showSection('lesson')">📖 Урок</button>
+  <button class="drawer-item" onclick="showSection('trainers')">🧠 Тренажёры</button>
+  <button class="drawer-item" onclick="showSection('calendar')">📅 Мои занятия</button>
+  <button class="drawer-item" onclick="showSection('tutorInfo')">👤 Мой репетитор</button>
+  <hr class="drawer-hr">
+  <button class="drawer-item" onclick="showSection('settings')">⚙️ Настройки</button>
+  <hr class="drawer-hr">
+  <button id="installBtnDrawer" class="drawer-item" style="display:none;">📲 Установить приложение</button>
+  <button class="drawer-item" onclick="doLogout()" style="color:#C0392B;">🚪 Выйти</button>
+</div>
+
+<div id="appRoot" style="display:none;">
+<div class="wrap">
+  <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.25rem;">
+    <button class="hamburger" onclick="openDrawer()">☰</button>
+    <h1 id="headerGreeting" style="margin:0;">👋 Привет!</h1>
+  </div>
+  <div class="sub" style="margin-top:0.375rem; display:flex; align-items:center; gap:0.5rem;">
+    <span>Всё для твоего урока — здесь.</span>
+    <span id="lessonCounterPill"></span>
+  </div>
+  <div id="mainArea" style="margin-top:1rem;"></div>
+</div>
+</div>
 
 <script>
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
@@ -84,9 +111,21 @@ function pickTheme(themeId){
 function applyTheme(){
   const t = THEMES[currentTheme] || THEMES.classic;
   document.body.style.backgroundColor = t.bg;
-  const card = document.querySelector('#studentRoot .card');
+  const card = document.querySelector('#mainArea .card');
   if(card) card.style.borderTop = `3px solid ${t.accent}`;
 }
+
+// ---- typed contacts (matches tutor.html's CONTACT_TYPES) ----
+const CONTACT_TYPES = {
+  telegram: { label:'Telegram', icon:'✈️', build: v => `https://t.me/${v}` },
+  whatsapp: { label:'WhatsApp', icon:'📱', build: v => `https://wa.me/${v}` },
+  vk:       { label:'ВК',       icon:'💬', build: v => `https://vk.com/im?sel=${v}` },
+  phone:    { label:'Телефон',  icon:'☎️', build: v => `tel:${v}` },
+  email:    { label:'Почта',    icon:'✉️', build: v => `mailto:${v}` },
+};
+function contactLink(c){ const t = CONTACT_TYPES[c.type]; return (t && c.value) ? t.build(c.value) : '#'; }
+function contactLabel(c){ const t = CONTACT_TYPES[c.type]; return t ? t.label : 'контакт'; }
+function contactIcon(c){ const t = CONTACT_TYPES[c.type]; return t ? t.icon : '🔗'; }
 
 let accountPanelOpen = false;
 function toggleAccountPanel(){
@@ -95,64 +134,130 @@ function toggleAccountPanel(){
   if(el) el.style.display = accountPanelOpen ? 'block' : 'none';
 }
 
+let otherContactsOpen = false;
+function toggleOtherContacts(){
+  otherContactsOpen = !otherContactsOpen;
+  const el = document.getElementById('otherContacts');
+  if(el) el.style.display = otherContactsOpen ? 'block' : 'none';
+}
+
+let viewSection = 'lesson';
+let lastStudent = null, lastMaterials = [], lastProfile = null;
+
+function openDrawer(){ document.getElementById('drawer').classList.add('open'); document.getElementById('backdrop').classList.add('open'); }
+function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('backdrop').classList.remove('open'); }
+function showSection(section){ viewSection = section; closeDrawer(); renderStudentView(lastStudent, lastMaterials, lastProfile); }
+
+const stubCard = (icon, text) => `<div class="card"><div class="body" style="text-align:center; padding:2rem 1rem; color:#B7BEC7;">
+  <div style="font-size:2rem; margin-bottom:0.5rem;">${icon}</div>
+  <div style="font-size:0.9375rem; font-weight:600; margin-bottom:0.25rem;">${text}</div>
+  <div style="font-size:0.78125rem;">Скоро здесь что-то появится</div>
+</div></div>`;
+
+function renderLessonSection(student, materials, profile){
+  const allFiles = materials || [];
+  const tutorName = (profile && profile.name) ? esc(profile.name) : null;
+  const emptyText = tutorName
+    ? `Здесь появятся материалы, как только ${tutorName} их добавит`
+    : `Здесь появятся материалы, как только их добавит твой репетитор`;
+  return `
+    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin-bottom:0.75rem;">🕐 Следующее занятие<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>
+    <div class="card"><div class="body">
+      ${student.format!=='Очно' ? `
+        <div class="row" style="margin-bottom:0.5rem;">
+          <a class="btn ${student.callLink?'':'btn-off'}" href="${student.callLink?esc(student.callLink):'#'}" target="_blank" style="background:${student.callLink?'#1F2A3D':''};color:${student.callLink?'#fff':''}">🎥 Звонок</a>
+          <a class="btn ${student.boardLink?'':'btn-off'}" href="${student.boardLink?esc(student.boardLink):'#'}" target="_blank" style="background:${student.boardLink?'#C0392B':''};color:${student.boardLink?'#fff':''}">✏️ Доска</a>
+        </div>` : `<div style="font-size:0.8125rem; color:#5A6472; margin-bottom:0.75rem;">Занятие очное — увидимся на месте 🤝</div>`}
+      <div class="filelabel">Материалы к уроку</div>
+      ${allFiles.length===0 ? `
+        <div style="text-align:center; padding:1.25rem 0.5rem; color:#B7BEC7;">
+          <div style="font-size:1.75rem; margin-bottom:0.375rem;">🗂️</div>
+          <div style="font-size:0.8125rem;">${emptyText}</div>
+        </div>` : (() => {
+          const discussList = allFiles.filter(f => (f.category||'discuss') === 'discuss');
+          const practiceList = allFiles.filter(f => f.category === 'practice');
+          const row = f => `<div class="filerow"><span>${materialIcon(f.url)}</span><a href="${esc(f.url)}" target="_blank">${esc(f.name||f.url)}</a></div>`;
+          let out = '';
+          if(discussList.length){ out += `<div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin:0.5rem 0 0.25rem;">📖 Разбираем</div>` + discussList.map(row).join(''); }
+          if(practiceList.length){ out += `<div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin:0.5rem 0 0.25rem;">🏋️ Тренируемся</div>` + practiceList.map(row).join(''); }
+          return out;
+        })()}
+    </div></div>`;
+}
+
+function renderTutorSection(profile){
+  const p = profile || {};
+  if(!p.name){
+    return `<div class="card"><div class="body" style="text-align:center; padding:2rem 1rem; color:#9BA3AE;">Репетитор пока не заполнил профиль</div></div>`;
+  }
+  const contacts = p.contacts || [];
+  const primary = contacts.find(c => c.id === p.primaryContactId) || contacts[0];
+  const others = contacts.filter(c => c !== primary);
+  return `
+    <div class="card"><div class="body">
+      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem;">Репетитор</div>
+      <div style="font-weight:600; font-size:1rem;">${esc(p.name)}</div>
+      ${p.showSubject && p.subject ? `<div style="font-size:0.8125rem; color:#5A6472; margin-top:0.125rem;">${esc(p.subject)}</div>` : ''}
+      ${p.showContacts && primary ? `
+        <a href="${contactLink(primary)}" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-top:0.875rem; padding:0.625rem 0; border-radius:0.625rem; background:#1F2A3D; color:#fff; font-weight:600; font-size:0.875rem; text-decoration:none;">
+          ${contactIcon(primary)} Написать в ${contactLabel(primary)}
+        </a>` : ''}
+      ${p.showContacts && others.length ? `
+        <div style="text-align:center; margin-top:0.5rem;">
+          <a href="#" onclick="toggleOtherContacts();return false;" style="font-size:0.75rem; color:#5A6472;">другие способы связи</a>
+        </div>
+        <div id="otherContacts" style="display:${otherContactsOpen?'block':'none'}; margin-top:0.5rem;">
+          <div style="display:flex; flex-wrap:wrap; gap:0.375rem; justify-content:center;">
+            ${others.map(c=>`<a href="${contactLink(c)}" target="_blank" style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.625rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#EAF0F6; color:#2C4A7C; text-decoration:none;">${contactIcon(c)} ${contactLabel(c)}</a>`).join('')}
+          </div>
+        </div>` : ''}
+    </div></div>`;
+}
+
+function renderSettingsSection(){
+  return `
+    <div class="card"><div class="body">
+      <div class="filelabel">Моя тема</div>
+      <div id="themePicker">${themePickerHTML()}</div>
+    </div></div>
+    <div class="card" style="margin-top:0.75rem;"><div class="body">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="filelabel" style="margin:0;">Пароль</div>
+        <a href="#" onclick="toggleAccountPanel();return false;" style="font-size:0.78125rem; color:#5A6472;">Сменить</a>
+      </div>
+      <div id="accountPanel" style="display:${accountPanelOpen?'block':'none'}; margin-top:0.625rem;">
+        <div style="font-size:0.78125rem; color:#5A6472; margin-bottom:0.625rem;">Чтобы сменить пароль, подтверди текущим</div>
+        <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+        <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+        <button onclick="changePassword()" style="width:100%; padding:0.5rem 0; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-weight:600; font-size:0.8125rem; cursor:pointer;">Сменить пароль</button>
+      </div>
+    </div></div>`;
+}
+
 function renderStudentView(student, materials, profile){
-  const root = document.getElementById('studentRoot');
+  lastStudent = student; lastMaterials = materials || []; lastProfile = profile;
+  const root = document.getElementById('appRoot');
   document.getElementById('loadingScreen').style.display = 'none';
-  root.style.display = 'block';
   if(!student){
-    root.innerHTML = `<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; text-align:center; color:#5A6472;">Не получилось найти твои данные. Попроси преподавателя проверить код приглашения.<br><br><a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>`;
+    root.style.display = 'none';
+    document.getElementById('notFoundOverlay').style.display = 'flex';
     return;
   }
-  const allFiles = materials || [];
-  const p = profile || {};
-  const stubRow = (icon, text) => `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin-bottom:0.5rem;">${icon} ${text}<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>`;
-  const contactIcon = (label) => {
-    const l = (label||'').toLowerCase();
-    if(l.includes('вк')||l.includes('vk')) return '💬';
-    if(l.includes('тг')||l.includes('telegram')||l.includes('tg')) return '✈️';
-    if(l.includes('ватс')||l.includes('whatsapp')||l.includes('wa')) return '📱';
-    if(l.includes('тел')||l.includes('phone')) return '☎️';
-    if(l.includes('mail')||l.includes('почт')) return '✉️';
-    return '🔗';
-  };
-  const profileBlock = p.name ? `
-    <div class="card" style="margin-bottom:0.75rem;"><div class="body">
-      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem;">Репетитор</div>
-      <div style="font-weight:600; font-size:0.9375rem;">${esc(p.name)}</div>
-      ${p.showSubject && p.subject ? `<div style="font-size:0.8125rem; color:#5A6472; margin-top:0.125rem;">${esc(p.subject)}</div>` : ''}
-      ${p.showContacts && (p.contacts||[]).length ? `<div style="display:flex; flex-wrap:wrap; gap:0.375rem; margin-top:0.5rem;">${p.contacts.map(c=>`<a href="${esc(c.url)}" target="_blank" style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.625rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#EAF0F6; color:#2C4A7C; text-decoration:none;">${contactIcon(c.label)} ${esc(c.label||'контакт')}</a>`).join('')}</div>` : ''}
-    </div></div>` : '';
-  root.innerHTML = `
-    <div style="min-height:100vh; background:#F3F5F1; padding:1.5rem;">
-      <div style="max-width:26rem; margin:0 auto;">
-        <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.25rem; margin-bottom:0.25rem;">Привет, ${esc(student.name)}! 👋</div>
-        <div style="font-size:0.8125rem; color:#5A6472; margin-bottom:1rem;">Всё для твоего урока — здесь. <a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a> · <a href="#" onclick="toggleAccountPanel();return false;" style="color:#5A6472;">🔑 Пароль</a></div>
-        <div id="accountPanel" style="display:${accountPanelOpen?'block':'none'}; background:#fff; border-radius:0.875rem; padding:0.875rem; margin-bottom:1rem; border:1px solid #E7E9EC;">
-          <div style="font-size:0.78125rem; color:#5A6472; margin-bottom:0.625rem;">Чтобы сменить пароль, подтверди текущим</div>
-          <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
-          <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
-          <button onclick="changePassword()" style="width:100%; padding:0.5rem 0; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-weight:600; font-size:0.8125rem; cursor:pointer;">Сменить пароль</button>
-        </div>
-        ${stubRow('🕐', 'Следующее занятие')}
-        <div class="card"><div class="body">
-          ${student.format!=='Очно' ? `
-            <div class="row" style="margin-bottom:0.5rem;">
-              <a class="btn ${student.callLink?'':'btn-off'}" href="${student.callLink?esc(student.callLink):'#'}" target="_blank" style="background:${student.callLink?'#1F2A3D':''};color:${student.callLink?'#fff':''}">🎥 Звонок</a>
-              <a class="btn ${student.boardLink?'':'btn-off'}" href="${student.boardLink?esc(student.boardLink):'#'}" target="_blank" style="background:${student.boardLink?'#C0392B':''};color:${student.boardLink?'#fff':''}">✏️ Доска</a>
-            </div>` : `<div style="font-size:0.8125rem; color:#5A6472; margin-bottom:0.75rem;">Занятие очное — увидимся на месте 🤝</div>`}
-          <div class="filelabel">Материалы к уроку</div>
-          ${allFiles.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;">Пока ничего нет</div>' : allFiles.map(f=>`
-            <div class="filerow"><span>${materialIcon(f.url)}</span><a href="${esc(f.url)}" target="_blank">${esc(f.name||f.url)}</a></div>`).join('')}
-        </div></div>
-        ${stubRow('🧠', 'Тренажёры')}
-        ${stubRow('📅', 'Мои занятия')}
-        ${profileBlock}
-        <div class="card"><div class="body">
-          <div class="filelabel">Моя тема</div>
-          <div id="themePicker">${themePickerHTML()}</div>
-        </div></div>
-      </div>
-    </div>`;
+  document.getElementById('notFoundOverlay').style.display = 'none';
+  root.style.display = 'block';
+  document.getElementById('headerGreeting').textContent = `👋 Привет, ${student.name}!`;
+  const count = student.completedLessonsCount || 0;
+  document.getElementById('lessonCounterPill').innerHTML = count > 0
+    ? `<span style="font-size:0.75rem; font-weight:600; background:#E2EFE6; color:#1F5C3A; padding:0.2rem 0.5rem; border-radius:999px;">🎉 Уже ${count} занят${count===1?'ие':(count<5?'ия':'ий')} вместе</span>`
+    : '';
+
+  const mainArea = document.getElementById('mainArea');
+  if(viewSection === 'trainers') mainArea.innerHTML = stubCard('🧠', 'Тренажёры');
+  else if(viewSection === 'calendar') mainArea.innerHTML = stubCard('📅', 'Мои занятия');
+  else if(viewSection === 'tutorInfo') mainArea.innerHTML = renderTutorSection(profile);
+  else if(viewSection === 'settings') mainArea.innerHTML = renderSettingsSection();
+  else mainArea.innerHTML = renderLessonSection(student, materials, profile);
+
   applyTheme();
 }
 </script>
@@ -277,7 +382,7 @@ function renderStudentView(student, materials, profile){
   }
 
   let deferredInstallPrompt = null;
-  const installBtn = document.getElementById('installBtn');
+  const installBtn = document.getElementById('installBtnDrawer');
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -290,6 +395,7 @@ function renderStudentView(student, materials, profile){
     await deferredInstallPrompt.userChoice;
     deferredInstallPrompt = null;
     installBtn.style.display = 'none';
+    closeDrawer();
   });
   window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
 </script>

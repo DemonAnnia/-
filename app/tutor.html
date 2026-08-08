@@ -61,8 +61,14 @@
       <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem;">Контакты</div>
       <div id="profContacts"></div>
       <div style="display:flex; gap:0.375rem; margin:0.375rem 0;">
-        <input id="profContactLabel" type="text" placeholder="кому/что (ВК, ТГ...)" style="width:38%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-        <input id="profContactUrl" type="text" placeholder="ссылка" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <select id="profContactType" onchange="updateContactPlaceholder()" style="width:34%; font-size:0.78125rem; padding:0.375rem 0.25rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          <option value="telegram">Telegram</option>
+          <option value="whatsapp">WhatsApp</option>
+          <option value="vk">ВК</option>
+          <option value="phone">Телефон</option>
+          <option value="email">Почта</option>
+        </select>
+        <input id="profContactValue" type="text" placeholder="username без @" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
         <button onclick="addProfileContact()" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer;">+</button>
       </div>
       <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.5rem; cursor:pointer;">
@@ -324,6 +330,21 @@ function removeMessenger(sid, mid){
   s.messengers = s.messengers.filter(m=>m.id!==mid);
   save();
 }
+function addSubject(id){
+  const s = data.students.find(x=>x.id===id);
+  const labelEl = document.getElementById('sublabel-'+id);
+  const priceEl = document.getElementById('subprice-'+id);
+  if(!labelEl.value.trim()) { showToast('Впиши название тарифа'); return; }
+  if(!Array.isArray(s.subjects)) s.subjects = [];
+  s.subjects.push({ id: uid(), label: labelEl.value.trim(), price: priceEl.value.trim() });
+  labelEl.value=''; priceEl.value='';
+  save();
+}
+function removeSubject(sid, subId){
+  const s = data.students.find(x=>x.id===sid);
+  s.subjects = (s.subjects||[]).filter(sub=>sub.id!==subId);
+  save();
+}
 
 let doneMsgFor = {};
 function markDone(id){
@@ -333,9 +354,15 @@ function markDone(id){
     return;
   }
   const s = data.students.find(x=>x.id===id);
-  const d = new Date();
-  const dateStr = d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
-  doneMsgFor[id] = `Здравствуйте! Занятие с ${s.name} ${dateStr} прошло — можно оплачивать 🙂`;
+  s.completedLessonsCount = (s.completedLessonsCount || 0) + 1;
+  if(s.needsPaymentReport){
+    const d = new Date();
+    const dateStr = d.toLocaleDateString('ru-RU', {day:'numeric', month:'long'});
+    doneMsgFor[id] = `Здравствуйте! Занятие с ${s.name} ${dateStr} прошло — можно оплачивать 🙂`;
+  } else {
+    doneMsgFor[id] = `✓ Отмечено. Занятий с ${s.name} теперь: ${s.completedLessonsCount}`;
+  }
+  save();
   render();
 }
 
@@ -399,7 +426,7 @@ function cardHTML(s){
         <div class="row">
           ${s.format!=='Очно'?`<a class="btn ${s.callLink?'':'btn-off'}" href="${s.callLink?esc(s.callLink):'#'}" target="_blank" style="background:${s.callLink?'#1F2A3D':''};color:${s.callLink?'#fff':''}" onclick="${s.callLink?'':'return false;'}">🎥 Звонок</a>`:''}
           ${s.format!=='Очно'?`<a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?accent.ink:''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>`:''}
-          ${s.needsPaymentReport?`<button class="btn btn-done" onclick="markDone('${s.id}')">✓ Урок прошёл</button>`:''}
+          <button class="btn btn-done" onclick="markDone('${s.id}')">✓ Урок прошёл</button>
         </div>
         ${s.messengers.length ? `<div class="chiprow">${s.messengers.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank">💬 ${esc(m.label||'Чат')}</a>`).join('')}</div>` : ''}
         <button class="btn" style="width:100%;margin-top:8px;background:${accent.soft};color:${accent.ink};border:1px solid ${accent.soft};" onclick="toggleStudentMsg('${s.id}')">📨 Сообщение ученику со ссылками</button>
@@ -425,6 +452,18 @@ function cardHTML(s){
             <input class="fname" type="text" id="mlabel-${s.id}" placeholder="кому (ВК / родителю)">
             <input class="furl" type="text" id="murl-${s.id}" placeholder="ссылка: wa.me/... или t.me/...">
             <button class="addfilebtn" onclick="addMessenger('${s.id}')">+</button>
+          </div>
+          <div class="filelabel" style="margin-top:0.75rem;">Тарифы</div>
+          ${(s.subjects||[]).length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>' : s.subjects.map(sub=>`
+            <div class="filerow">
+              <span>💳</span>
+              <span style="flex:1; font-size:0.8125rem;">${esc(sub.label)} · ${esc(sub.price)}</span>
+              <button class="iconbtn" onclick="removeSubject('${s.id}','${sub.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+            </div>`).join('')}
+          <div class="fileadd">
+            <input class="fname" type="text" id="sublabel-${s.id}" placeholder="название (напр. ОГЭ)">
+            <input class="furl" type="text" id="subprice-${s.id}" placeholder="цена (напр. 2900 ₽)">
+            <button class="addfilebtn" onclick="addSubject('${s.id}')">+</button>
           </div>
         </div>
         <label class="checklabel"><input type="checkbox" ${s.needsPaymentReport?'checked':''} onchange="updateStudent('${s.id}',{needsPaymentReport:this.checked})"> Родителю нужно писать про оплату после урока</label>
@@ -490,34 +529,61 @@ function setTutorTheme(themeId){
   save();
 }
 
+const CONTACT_TYPES = {
+  telegram: { label:'Telegram', icon:'✈️', placeholder:'username без @', build: v => `https://t.me/${v}` },
+  whatsapp: { label:'WhatsApp', icon:'📱', placeholder:'номер с кодом страны, без +', build: v => `https://wa.me/${v}` },
+  vk:       { label:'ВК',       icon:'💬', placeholder:'числовой ID страницы (не короткое имя!)', build: v => `https://vk.com/im?sel=${v}` },
+  phone:    { label:'Телефон',  icon:'☎️', placeholder:'номер телефона', build: v => `tel:${v}` },
+  email:    { label:'Почта',    icon:'✉️', placeholder:'email', build: v => `mailto:${v}` },
+};
+function contactLink(c){ const t = CONTACT_TYPES[c.type]; return (t && c.value) ? t.build(c.value) : '#'; }
+
+function updateContactPlaceholder(){
+  const type = document.getElementById('profContactType').value;
+  const t = CONTACT_TYPES[type];
+  document.getElementById('profContactValue').placeholder = t ? t.placeholder : '';
+}
+
 let profilePanelOpen = false;
 let profileContacts = [];
+let profilePrimaryId = null;
 function toggleProfilePanel(){
   profilePanelOpen = !profilePanelOpen;
   document.getElementById('profilePanel').style.display = profilePanelOpen ? 'block' : 'none';
+}
+function setPrimaryContact(id){
+  profilePrimaryId = id;
+  renderProfileContacts();
 }
 function renderProfileContacts(){
   const el = document.getElementById('profContacts');
   if(!el) return;
   el.innerHTML = profileContacts.length===0
     ? '<div style="font-size:0.75rem;color:#9BA3AE;margin-bottom:0.375rem;">Пока пусто</div>'
-    : profileContacts.map(c => `
+    : profileContacts.map(c => {
+      const t = CONTACT_TYPES[c.type] || {label:c.type, icon:'🔗'};
+      const isPrimary = profilePrimaryId === c.id;
+      return `
       <div style="display:flex; align-items:center; gap:0.375rem; margin-bottom:0.25rem;">
-        <span style="flex:1; font-size:0.78125rem; color:#3A4250;">${esc(c.label)}: <a href="${esc(c.url)}" target="_blank" style="color:#2C4A7C;">${esc(c.url)}</a></span>
+        <button onclick="setPrimaryContact('${c.id}')" title="Сделать основным" style="width:1.375rem; height:1.375rem; border-radius:999px; border:1px solid ${isPrimary?'#F0B429':'#C9D2DB'}; background:${isPrimary?'#FEF3D6':'#fff'}; color:${isPrimary?'#B8860B':'#C9D2DB'}; font-size:0.75rem; cursor:pointer; flex-shrink:0;">★</button>
+        <span style="flex:1; font-size:0.78125rem; color:#3A4250;">${t.icon} ${esc(t.label)}: ${esc(c.value)}</span>
+        <a href="${contactLink(c)}" target="_blank" style="font-size:0.71875rem; color:#2C4A7C;">проверить</a>
         <button onclick="removeProfileContact('${c.id}')" style="width:1.5rem; height:1.5rem; border-radius:0.375rem; border:1px solid #F0DAD6; background:#FBEEEC; color:#C0392B; cursor:pointer;">✕</button>
-      </div>`).join('');
+      </div>`;}).join('');
 }
 function addProfileContact(){
-  const label = document.getElementById('profContactLabel').value.trim();
-  const url = document.getElementById('profContactUrl').value.trim();
-  if(!url){ showToast('Впиши ссылку для контакта'); return; }
-  profileContacts.push({ id: uid(), label, url });
-  document.getElementById('profContactLabel').value = '';
-  document.getElementById('profContactUrl').value = '';
+  const type = document.getElementById('profContactType').value;
+  const value = document.getElementById('profContactValue').value.trim();
+  if(!value){ showToast('Впиши значение для контакта'); return; }
+  const newContact = { id: uid(), type, value };
+  profileContacts.push(newContact);
+  if(!profilePrimaryId) profilePrimaryId = newContact.id;
+  document.getElementById('profContactValue').value = '';
   renderProfileContacts();
 }
 function removeProfileContact(id){
   profileContacts = profileContacts.filter(c => c.id !== id);
+  if(profilePrimaryId === id) profilePrimaryId = profileContacts[0] ? profileContacts[0].id : null;
   renderProfileContacts();
 }
 function loadProfileIntoForm(p){
@@ -526,7 +592,9 @@ function loadProfileIntoForm(p){
   document.getElementById('profShowSubject').checked = !!p.showSubject;
   document.getElementById('profShowContacts').checked = !!p.showContacts;
   profileContacts = p.contacts || [];
+  profilePrimaryId = p.primaryContactId || (profileContacts[0] ? profileContacts[0].id : null);
   renderProfileContacts();
+  updateContactPlaceholder();
 }
 function saveProfile(){
   const profile = {
@@ -535,6 +603,7 @@ function saveProfile(){
     showSubject: document.getElementById('profShowSubject').checked,
     showContacts: document.getElementById('profShowContacts').checked,
     contacts: profileContacts,
+    primaryContactId: profilePrimaryId,
   };
   if(window.__fbSaveProfile) window.__fbSaveProfile(profile);
   showToast('Профиль сохранён', 'success', 4000);
@@ -576,15 +645,83 @@ function pickerHTML(picker, prefix){
   </div>`;
 }
 
-function addMaterial(){
+let matMode = 'link';
+let matCategory = 'discuss';
+function setMatCategory(cat){ matCategory = cat; render(); }
+let selectedMatFile = null;
+const ALLOWED_EXT = ['pdf','doc','docx','xls','xlsx','csv','ppt','pptx','png','jpg','jpeg','gif','webp','txt','zip','rar','py'];
+const VIDEO_EXT = ['mp4','mov','avi','webm','mkv'];
+const MAX_FILE_SIZE = 20*1024*1024; // 20 МБ, совпадает с upload.php
+
+function setMatMode(mode){
+  matMode = mode;
+  selectedMatFile = null;
+  render();
+}
+
+function onMatFileSelected(){
+  const input = document.getElementById('matFile');
+  const infoEl = document.getElementById('matFileInfo');
+  const file = input.files[0];
+  if(!file){ selectedMatFile = null; if(infoEl) infoEl.textContent = ''; return; }
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  if(VIDEO_EXT.includes(ext)){
+    showToast('Видео сюда не грузим — переключись на «Ссылка» и вставь ссылку на YouTube/облако');
+    input.value = ''; selectedMatFile = null; if(infoEl) infoEl.textContent = '';
+    return;
+  }
+  if(!ALLOWED_EXT.includes(ext)){
+    showToast('Такой тип файла нельзя загрузить: .' + ext);
+    input.value = ''; selectedMatFile = null; if(infoEl) infoEl.textContent = '';
+    return;
+  }
+  if(file.size > MAX_FILE_SIZE){
+    showToast('Файл слишком большой — максимум 20 МБ');
+    input.value = ''; selectedMatFile = null; if(infoEl) infoEl.textContent = '';
+    return;
+  }
+  selectedMatFile = file;
+  if(infoEl) infoEl.textContent = `${file.name} · ${(file.size/1024/1024).toFixed(1)} МБ`;
+}
+
+async function addMaterial(){
   const name = document.getElementById('matName').value.trim();
-  const url = document.getElementById('matUrl').value.trim();
-  if(!url){ return; }
   if(!materialPicker.visibleToAll && materialPicker.studentIds.length===0){
     showToast('Выбери, кому виден материал — «Все ученики» или хотя бы одного конкретного');
     return;
   }
-  const material = { id: uid(), name, url, visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds] };
+
+  if(matMode === 'upload'){
+    if(!selectedMatFile){ showToast('Выбери файл для загрузки'); return; }
+    if(!window.__fbUploadMaterialFile){ showToast('Загрузка сейчас недоступна, попробуй позже'); return; }
+    showToast('Загружаю файл…', 'info', 15000);
+    try{
+      const result = await window.__fbUploadMaterialFile(selectedMatFile);
+      const material = {
+        id: uid(), name: name || selectedMatFile.name, url: result.url,
+        storage: 'timeweb', fileName: result.fileName, fileOwnerUid: currentUid, category: matCategory,
+        visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds]
+      };
+      data.materials = [...(data.materials||[]), material];
+      if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(material);
+      document.getElementById('matName').value = '';
+      selectedMatFile = null;
+      materialPicker = { visibleToAll:false, studentIds:[] };
+      try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
+      showToast('Файл загружен и добавлен!', 'success', 3000);
+      render();
+    }catch(e){
+      showToast('Не получилось загрузить: ' + (e.message || 'ошибка сервера'));
+    }
+    return;
+  }
+
+  const url = document.getElementById('matUrl').value.trim();
+  if(!url){ return; }
+  const material = {
+    id: uid(), name, url, storage:'external', fileName:null, fileOwnerUid:null, category: matCategory,
+    visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds]
+  };
   data.materials = [...(data.materials||[]), material];
   if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(material);
   document.getElementById('matName').value = '';
@@ -593,11 +730,17 @@ function addMaterial(){
   try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
   render();
 }
-function deleteMaterial(id){
-  data.materials = (data.materials||[]).filter(m=>m.id!==id);
+async function deleteMaterial(id){
+  const m = (data.materials||[]).find(x=>x.id===id);
+  data.materials = (data.materials||[]).filter(x=>x.id!==id);
   if(window.__fbDeleteMaterial) window.__fbDeleteMaterial(id);
   try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
   render();
+  // физический файл на Timeweb трогаем только если ЭТОТ репетитор — владелец файла
+  // (пока нет обмена материалами между репетиторами, это всегда так)
+  if(m && m.storage === 'timeweb' && m.fileOwnerUid === currentUid && window.__fbDeleteMaterialFile){
+    window.__fbDeleteMaterialFile(m.fileName).catch(() => {});
+  }
 }
 function startEditAccess(id){
   const m = (data.materials||[]).find(x=>x.id===id);
@@ -623,12 +766,8 @@ function accessLabel(m){
   return names.length ? names.map(n=>`<span class="mat-access-chip">${esc(n)}</span>`).join('') : '<span class="mat-access-chip" style="background:#F6E4E1;color:#C0392B;">Никому не видно</span>';
 }
 
-function renderMaterialsView(){
-  const list = data.materials || [];
-  const addPicker = pickerHTML(materialPicker, 'window.');
-  const itemsHtml = list.length===0
-    ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.5rem 0;">Пока ни одного материала</div>'
-    : list.map(m => `
+function materialCardHTML(m){
+  return `
       <div class="matcard">
         <div style="display:flex; align-items:center; gap:0.5rem;">
           <span>${materialIcon(m.url)}</span>
@@ -648,7 +787,17 @@ function renderMaterialsView(){
             <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; padding:0.25rem 0; margin-top:0.25rem; cursor:pointer; text-decoration:underline;" onclick="startEditAccess('${m.id}')">✏️ Изменить доступ</button>
           `}
         </div>
-      </div>`).join('');
+      </div>`;
+}
+function renderMaterialsView(){
+  const list = data.materials || [];
+  const addPicker = pickerHTML(materialPicker, 'window.');
+  const discussList = list.filter(m => (m.category||'discuss') === 'discuss');
+  const practiceList = list.filter(m => m.category === 'practice');
+  const groupHtml = (title, icon, items) => `
+    <div class="filelabel" style="margin-top:0.75rem;">${icon} ${title}</div>
+    ${items.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0;">Пока пусто</div>' : items.map(materialCardHTML).join('')}
+  `;
 
   return `
     <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
@@ -658,13 +807,29 @@ function renderMaterialsView(){
     <div class="matcard">
       <div class="filelabel">Добавить новый материал</div>
       <input id="matName" type="text" placeholder="название" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-      <input id="matUrl" type="text" placeholder="ссылка на файл" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+        <button onclick="setMatMode('link')" class="mat-pill ${matMode==='link'?'picked':''}" style="flex:1; justify-content:center;">🔗 Ссылка</button>
+        <button onclick="setMatMode('upload')" class="mat-pill ${matMode==='upload'?'picked':''}" style="flex:1; justify-content:center;">📁 Загрузить файл</button>
+      </div>
+      ${matMode==='upload' ? `
+        <input type="file" id="matFile" onchange="onMatFileSelected()" style="width:100%; font-size:0.78125rem; margin-bottom:0.25rem;">
+        <div id="matFileInfo" style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.375rem;"></div>
+        <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.375rem;">До 20 МБ. Видео сюда не грузим — для видео используй ссылку.</div>
+      ` : `
+        <input id="matUrl" type="text" placeholder="ссылка на файл" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      `}
+      <div class="filelabel" style="margin-top:0.375rem;">Категория</div>
+      <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+        <button onclick="setMatCategory('discuss')" class="mat-pill ${matCategory==='discuss'?'picked':''}" style="flex:1; justify-content:center;">📖 Разбираем</button>
+        <button onclick="setMatCategory('practice')" class="mat-pill ${matCategory==='practice'?'picked':''}" style="flex:1; justify-content:center;">🏋️ Тренируемся</button>
+      </div>
       <div class="filelabel" style="margin-top:0.375rem;">Кому видно</div>
       ${addPicker}
       <button class="btn btn-done" style="width:100%; margin-top:0.375rem;" onclick="addMaterial()">+ Добавить</button>
     </div>
     <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin-bottom:0.75rem;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>
-    ${itemsHtml}
+    ${groupHtml('Разбираем', '📖', discussList)}
+    ${groupHtml('Тренируемся', '🏋️', practiceList)}
   `;
 }
 
@@ -813,6 +978,34 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     try { await deleteDoc(doc(db, 'users', currentUid, 'materials', id)); }
     catch (e) { console.error('delete material failed', e); }
   };
+
+  const TIMEWEB_BASE = 'https://ct030786.tw1.ru';
+  window.__fbUploadMaterialFile = async function (file) {
+    const token = await auth.currentUser.getIdToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    const resp = await fetch(TIMEWEB_BASE + '/api/upload.php', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: formData,
+    });
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok || !json.success) throw new Error(json.error || 'Сервер отказал в загрузке');
+    return json; // { success, materialId, fileName, origName, url }
+  };
+  window.__fbDeleteMaterialFile = async function (fileName) {
+    const token = await auth.currentUser.getIdToken();
+    const formData = new FormData();
+    formData.append('fileName', fileName);
+    const resp = await fetch(TIMEWEB_BASE + '/api/delete.php', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: formData,
+    });
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok || !json.success) throw new Error(json.error || 'Сервер отказал в удалении');
+    return json;
+  };
   window.__fbSaveProfile = async function (profile) {
     if (!currentUid) return;
     try { await setDoc(doc(db, 'users', currentUid, 'appdata', 'profile'), profile); }
@@ -841,6 +1034,8 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
   function migrateStudent(s){
     if(!Array.isArray(s.messengers)){ s.messengers = s.messenger ? [{id:'m1', label:'', url:s.messenger}] : []; }
     delete s.messenger;
+    if(!Array.isArray(s.subjects)) s.subjects = [];
+    s.subjects = s.subjects.map(sub => sub.id ? sub : { ...sub, id: uid() });
     return s;
   }
 
