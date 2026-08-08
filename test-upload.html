@@ -83,11 +83,26 @@
     }
   };
 
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 МБ — должно совпадать с MAX_FILE_SIZE в upload.php
+  const ALLOWED_EXT = ['pdf','doc','docx','xls','xlsx','csv','ppt','pptx','png','jpg','jpeg','gif','webp','txt','zip','rar','py']; // должно совпадать с ALLOWED_EXT в upload.php
+
   window.doUpload = async function () {
     const fileInput = document.getElementById('fileInput');
     const file = fileInput.files[0];
     if (!file) { print('❌ Файл не выбран', 'err'); return; }
     if (!auth.currentUser) { print('❌ Сначала войди', 'err'); return; }
+
+    // --- быстрая проверка на стороне браузера, ДО отправки на сервер ---
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!ALLOWED_EXT.includes(ext)) {
+      print('❌ Недопустимый тип файла: .' + ext + ' (проверено в браузере, на сервер не отправляли)', 'err');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      print('❌ Файл слишком большой — максимум 20 МБ (проверено в браузере, на сервер не отправляли)', 'err');
+      return;
+    }
+    // --- проверка пройдена, отправляем на сервер ---
 
     print('⏳ Получаю токен...');
     const token = await auth.currentUser.getIdToken();
