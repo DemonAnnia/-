@@ -45,6 +45,32 @@
       <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
       <button onclick="changePassword()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сменить пароль</button>
     </div>
+
+    <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin:0.75rem 0 0.375rem;">Моя тема</div>
+    <div id="tutorThemePicker" style="padding:0 0.625rem 0.5rem;"></div>
+
+    <button class="drawer-item" onclick="toggleProfilePanel()">👤 О себе — видно ученикам</button>
+    <div id="profilePanel" style="display:none; background:#F6F7F5; border-radius:0.625rem; padding:0.75rem; margin:0.375rem 0;">
+      <input id="profName" type="text" placeholder="ФИО" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+        <input id="profSubject" type="text" placeholder="Предмет" style="flex:1; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+      </div>
+      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.5rem; cursor:pointer;">
+        <input id="profShowSubject" type="checkbox"> Показывать предмет ученикам
+      </label>
+      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem;">Контакты</div>
+      <div id="profContacts"></div>
+      <div style="display:flex; gap:0.375rem; margin:0.375rem 0;">
+        <input id="profContactLabel" type="text" placeholder="кому/что (ВК, ТГ...)" style="width:38%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <input id="profContactUrl" type="text" placeholder="ссылка" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <button onclick="addProfileContact()" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer;">+</button>
+      </div>
+      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.5rem; cursor:pointer;">
+        <input id="profShowContacts" type="checkbox"> Показывать контакты ученикам
+      </label>
+      <button onclick="saveProfile()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сохранить профиль</button>
+    </div>
+
     <button class="drawer-item" onclick="doLogout()" style="color:#C0392B;">🚪 Выйти</button>
   </div>
 
@@ -90,6 +116,35 @@ function showToast(message, type='error', duration=10000){
   clearTimeout(window.__toastTimer);
   window.__toastTimer = setTimeout(() => el.classList.remove('show'), duration);
 }
+
+function materialIcon(url){
+  const clean = (url||'').split('?')[0].toLowerCase();
+  if(clean.endsWith('.pdf')) return '📕';
+  if(/\.(jpg|jpeg|png|gif|webp|heic)$/.test(clean)) return '🖼️';
+  if(/\.(mp4|mov|avi|webm|mkv)$/.test(clean)) return '🎬';
+  if(/\.(doc|docx)$/.test(clean)) return '📄';
+  if(/\.(xls|xlsx|csv)$/.test(clean)) return '📊';
+  if(/\.(ppt|pptx)$/.test(clean)) return '📽️';
+  return '🔗';
+}
+
+const THEMES = {
+  classic: { name:'Классика', bg:'#F3F5F1', accent:'#1F2A3D' },
+  mint:    { name:'Мята',     bg:'#EAF4EE', accent:'#2E7D4F' },
+  sky:     { name:'Небо',     bg:'#E7EEF6', accent:'#2C4A7C' },
+  peach:   { name:'Персик',   bg:'#FBEEE4', accent:'#B5651D' },
+  lavender:{ name:'Лаванда',  bg:'#EFEAF6', accent:'#6A4C93' },
+  pink:    { name:'Розовый',  bg:'#FBEAF0', accent:'#C2547A' },
+};
+function themePickerHTML(currentTheme, onClickFn){
+  return `<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+    ${Object.entries(THEMES).map(([id, t]) => `
+      <button onclick="${onClickFn}('${id}')" title="${t.name}" style="width:2.25rem; height:2.25rem; border-radius:999px; border:2px solid ${currentTheme===id?'#1F2A3D':'transparent'}; background:${t.accent}; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+        ${currentTheme===id ? '<span style="color:#fff; font-size:0.875rem;">✓</span>' : ''}
+      </button>`).join('')}
+  </div>`;
+}
+
 const ACCENTS = [
   {ink:'#C0392B', soft:'#F6E4E1'},
   {ink:'#2E7D4F', soft:'#E2EFE6'},
@@ -322,10 +377,17 @@ function cardHTML(s){
     const open = data.openIds.includes(s.id);
     const tags = s.subjects.map(sub=>`<span class="tag">${esc(sub.label)} · ${esc(sub.price)}</span>`).join('');
     const msg = doneMsgFor[s.id];
+    const studentTheme = studentThemes[s.id];
+    const themeBadge = (studentTheme && studentTheme !== 'classic' && THEMES[studentTheme])
+      ? `<span style="position:absolute; bottom:-0.125rem; right:-0.125rem; width:0.5rem; height:0.5rem; border-radius:999px; background:${THEMES[studentTheme].accent}; border:1.5px solid #fff;"></span>`
+      : '';
     return `
     <div class="card">
       <div class="card-head" style="background:${accent.soft}" onclick="toggleOpen('${s.id}')">
-        <div class="dot" style="background:${accent.ink}"></div>
+        <div style="position:relative; flex-shrink:0;">
+          <div class="dot" style="background:${accent.ink}"></div>
+          ${themeBadge}
+        </div>
         <div style="flex:1;min-width:0;">
           <div class="name">${esc(s.name)}</div>
           <div class="meta">${esc(s.grade)} · ${esc(s.format)}</div>
@@ -408,6 +470,74 @@ let settingsPanelOpen = false;
 function toggleSettingsPanel(){
   settingsPanelOpen = !settingsPanelOpen;
   document.getElementById('settingsPanel').style.display = settingsPanelOpen ? 'block' : 'none';
+}
+
+let studentThemes = {}; // studentId -> themeId, populated by module script listeners
+
+function renderTutorThemePicker(){
+  const el = document.getElementById('tutorThemePicker');
+  if(!el) return;
+  el.innerHTML = themePickerHTML(data.theme || 'classic', 'setTutorTheme');
+}
+function applyTutorTheme(){
+  const t = THEMES[data.theme || 'classic'] || THEMES.classic;
+  document.body.style.backgroundColor = t.bg;
+}
+function setTutorTheme(themeId){
+  data.theme = themeId;
+  applyTutorTheme();
+  renderTutorThemePicker();
+  save();
+}
+
+let profilePanelOpen = false;
+let profileContacts = [];
+function toggleProfilePanel(){
+  profilePanelOpen = !profilePanelOpen;
+  document.getElementById('profilePanel').style.display = profilePanelOpen ? 'block' : 'none';
+}
+function renderProfileContacts(){
+  const el = document.getElementById('profContacts');
+  if(!el) return;
+  el.innerHTML = profileContacts.length===0
+    ? '<div style="font-size:0.75rem;color:#9BA3AE;margin-bottom:0.375rem;">Пока пусто</div>'
+    : profileContacts.map(c => `
+      <div style="display:flex; align-items:center; gap:0.375rem; margin-bottom:0.25rem;">
+        <span style="flex:1; font-size:0.78125rem; color:#3A4250;">${esc(c.label)}: <a href="${esc(c.url)}" target="_blank" style="color:#2C4A7C;">${esc(c.url)}</a></span>
+        <button onclick="removeProfileContact('${c.id}')" style="width:1.5rem; height:1.5rem; border-radius:0.375rem; border:1px solid #F0DAD6; background:#FBEEEC; color:#C0392B; cursor:pointer;">✕</button>
+      </div>`).join('');
+}
+function addProfileContact(){
+  const label = document.getElementById('profContactLabel').value.trim();
+  const url = document.getElementById('profContactUrl').value.trim();
+  if(!url){ showToast('Впиши ссылку для контакта'); return; }
+  profileContacts.push({ id: uid(), label, url });
+  document.getElementById('profContactLabel').value = '';
+  document.getElementById('profContactUrl').value = '';
+  renderProfileContacts();
+}
+function removeProfileContact(id){
+  profileContacts = profileContacts.filter(c => c.id !== id);
+  renderProfileContacts();
+}
+function loadProfileIntoForm(p){
+  document.getElementById('profName').value = p.name || '';
+  document.getElementById('profSubject').value = p.subject || '';
+  document.getElementById('profShowSubject').checked = !!p.showSubject;
+  document.getElementById('profShowContacts').checked = !!p.showContacts;
+  profileContacts = p.contacts || [];
+  renderProfileContacts();
+}
+function saveProfile(){
+  const profile = {
+    name: document.getElementById('profName').value.trim(),
+    subject: document.getElementById('profSubject').value.trim(),
+    showSubject: document.getElementById('profShowSubject').checked,
+    showContacts: document.getElementById('profShowContacts').checked,
+    contacts: profileContacts,
+  };
+  if(window.__fbSaveProfile) window.__fbSaveProfile(profile);
+  showToast('Профиль сохранён', 'success', 4000);
 }
 
 function renderDrawerLists(){
@@ -501,7 +631,7 @@ function renderMaterialsView(){
     : list.map(m => `
       <div class="matcard">
         <div style="display:flex; align-items:center; gap:0.5rem;">
-          <span>📄</span>
+          <span>${materialIcon(m.url)}</span>
           <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
           <button class="iconbtn" onclick="copyText('${esc(m.url)}', this)">⧉</button>
           <button class="iconbtn" onclick="deleteMaterial('${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
@@ -533,12 +663,15 @@ function renderMaterialsView(){
       ${addPicker}
       <button class="btn btn-done" style="width:100%; margin-top:0.375rem;" onclick="addMaterial()">+ Добавить</button>
     </div>
+    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin-bottom:0.75rem;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>
     ${itemsHtml}
   `;
 }
 
 function render(){
   renderDrawerLists();
+  renderTutorThemePicker();
+  applyTutorTheme();
   const wrap = document.getElementById('mainArea');
 
   if(viewMode === 'materials'){
@@ -680,6 +813,11 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     try { await deleteDoc(doc(db, 'users', currentUid, 'materials', id)); }
     catch (e) { console.error('delete material failed', e); }
   };
+  window.__fbSaveProfile = async function (profile) {
+    if (!currentUid) return;
+    try { await setDoc(doc(db, 'users', currentUid, 'appdata', 'profile'), profile); }
+    catch (e) { console.error('save profile failed', e); }
+  };
 
   function pushSaveToFirestore() {
     if (!currentUid) return;
@@ -694,7 +832,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
         setDoc(doc(db, 'users', currentUid, 'students', s.id), s).catch((e) => console.error('save student failed', e));
       });
       setDoc(doc(db, 'users', currentUid, 'appdata', 'meta'), {
-        openIds: data.openIds || []
+        openIds: data.openIds || [], theme: data.theme || 'classic'
       }).catch((e) => console.error('save meta failed', e));
     }, 400);
   }
@@ -734,16 +872,29 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
   }
   function cryptoRandomId(){ return Math.random().toString(36).slice(2,9); }
 
+  let subscribedThemeIds = new Set();
+  function subscribeStudentThemes(uid, students){
+    students.forEach(s => {
+      if (subscribedThemeIds.has(s.id)) return;
+      subscribedThemeIds.add(s.id);
+      onSnapshot(doc(db, 'users', uid, 'students', s.id, 'prefs', 'theme'), (snap) => {
+        studentThemes[s.id] = snap.exists() ? (snap.data().theme || 'classic') : 'classic';
+        render();
+      }, () => {});
+    });
+  }
+
   function startTutorSync(uid) {
     let studentsLoaded = false, metaLoaded = false, materialsLoaded = false;
     let latestMaterials = [];
     const tryRender = () => {
       if (!studentsLoaded || !metaLoaded || !materialsLoaded) return;
-      data = { students: latestStudents, materials: latestMaterials, openIds: latestMeta.openIds, sharedFiles: [] };
+      data = { students: latestStudents, materials: latestMaterials, openIds: latestMeta.openIds, theme: latestMeta.theme, sharedFiles: [] };
       knownStudentIds = new Set(latestStudents.map(s => s.id));
       try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
       document.getElementById('loadingScreen').style.display = 'none';
       document.getElementById('appRoot').style.display = 'block';
+      subscribeStudentThemes(uid, latestStudents);
       render();
     };
     unsubStudents = onSnapshot(collection(db, 'users', uid, 'students'), (snap) => {
@@ -761,6 +912,9 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
       materialsLoaded = true;
       tryRender();
     }, (err) => console.error('materials sync error', err));
+    onSnapshot(doc(db, 'users', uid, 'appdata', 'profile'), (snap) => {
+      if (snap.exists() && window.loadProfileIntoForm) window.loadProfileIntoForm(snap.data());
+    }, (err) => console.error('profile sync error', err));
   }
 
   onAuthStateChanged(auth, async (user) => {
