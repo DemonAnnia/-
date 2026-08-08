@@ -105,6 +105,7 @@
         log.appendChild(a);
       } else {
         print('❌ Сервер ответил ошибкой: ' + (data.error || res.status), 'err');
+        if (data.debug) print('🔍 debug: ' + data.debug, 'err');
       }
     } catch (e) {
       print('❌ Не удалось обратиться к серверу: ' + e.message, 'err');
