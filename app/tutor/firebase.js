@@ -33,19 +33,20 @@
   };
 
   async function registerPushTokenSilently(){
-    if(!pushSupported() || !currentUid) return false;
-    if(Notification.permission !== 'granted') return false;
+    if(!pushSupported()) return { ok:false, error:'браузер не поддерживает push' };
+    if(!currentUid) return { ok:false, error:'нет активного входа' };
+    if(Notification.permission !== 'granted') return { ok:false, error:'разрешение не выдано (' + Notification.permission + ')' };
     try{
       const reg = await navigator.serviceWorker.ready;
       const messaging = getMessaging(fbApp);
       const token = await getFcmToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
-      if(!token) return false;
+      if(!token) return { ok:false, error:'getToken вернул пусто' };
       const safeId = token.replace(/[\/]/g, '_');
       await setDoc(doc(db, 'users', currentUid, 'pushTokens', safeId), { token, updatedAt: Date.now() });
-      return true;
+      return { ok:true };
     }catch(e){
       console.error('silent push token registration failed', e);
-      return false;
+      return { ok:false, error: (e && (e.code || e.message)) || 'неизвестная ошибка' };
     }
   }
   window.__fbRegisterPushTokenSilently = registerPushTokenSilently;
@@ -59,8 +60,8 @@
     try{
       const permission = await Notification.requestPermission();
       if(permission !== 'granted'){ showToast('Уведомления не разрешены — можно включить позже в настройках браузера'); return; }
-      const ok = await registerPushTokenSilently();
-      if(!ok){ showToast('Не получилось получить токен уведомлений'); return; }
+      const result = await registerPushTokenSilently();
+      if(!result.ok){ showToast('Не получилось получить токен: ' + result.error, 'error', 10000); return; }
       showToast('Уведомления включены на этом устройстве!', 'success', 4000);
       if(window.refreshSettingsPushStatus) window.refreshSettingsPushStatus();
     }catch(e){
@@ -71,8 +72,8 @@
 
   window.__reRegisterPushDevice = async function(){
     showToast('Обновляю…', 'info', 4000);
-    const ok = await registerPushTokenSilently();
-    showToast(ok ? 'Готово, это устройство обновлено' : 'Не получилось — проверь разрешение уведомлений в браузере', ok ? 'success' : 'error', 6000);
+    const result = await registerPushTokenSilently();
+    showToast(result.ok ? 'Готово, это устройство обновлено' : ('Не получилось: ' + result.error), result.ok ? 'success' : 'error', 12000);
   };
 
   window.__fbSendSelfTestPush = async function(){
