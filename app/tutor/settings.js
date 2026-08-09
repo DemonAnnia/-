@@ -87,6 +87,37 @@ function saveProfile(){
 }
 
 let dataPanelOpen = false;
+function renderPushSettingsInner(){
+  const status = window.__pushStatus ? window.__pushStatus() : 'unsupported';
+  if(status === 'unsupported'){
+    return `<div class="filelabel" style="margin:0;">Уведомления</div>
+      <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Этот браузер не поддерживает уведомления.</div>`;
+  }
+  if(status === 'ios-needs-install'){
+    return `<div class="filelabel" style="margin:0;">Уведомления</div>
+      <div style="font-size:0.78125rem; color:#5A6472; margin-top:0.375rem;">На iPhone уведомления работают только из установленного приложения. Сначала установи его на экран (значок «Поделиться» → «На экран Домой»), затем возвращайся сюда.</div>`;
+  }
+  if(status === 'granted'){
+    return `<div style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="filelabel" style="margin:0;">Уведомления</div>
+        <span style="font-size:0.78125rem; color:#2E7D4F;">✓ Включены</span>
+      </div>
+      <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Новый ученик, коллега поделился материалом и другие события.</div>`;
+  }
+  if(status === 'denied'){
+    return `<div class="filelabel" style="margin:0;">Уведомления</div>
+      <div style="font-size:0.78125rem; color:#5A6472; margin-top:0.375rem;">Заблокированы в браузере — включить можно только через настройки сайта в самом браузере.</div>`;
+  }
+  return `<div style="display:flex; align-items:center; justify-content:space-between;">
+      <div class="filelabel" style="margin:0;">Уведомления</div>
+      <a href="#" onclick="window.__fbEnablePush();return false;" style="font-size:0.78125rem; color:#5A6472;">Включить</a>
+    </div>
+    <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Узнавай сразу, когда подключился новый ученик или коллега поделился материалом.</div>`;
+}
+window.refreshSettingsPushStatus = function(){
+  const el = document.getElementById('pushSettingsCard');
+  if(el) el.innerHTML = renderPushSettingsInner();
+};
 function toggleDataPanel(){
   dataPanelOpen = !dataPanelOpen;
   renderSettingsView();
@@ -144,6 +175,10 @@ function renderSettingsView(){
         <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
         <button onclick="changePassword()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сменить пароль</button>
       </div>
+    </div>
+
+    <div class="matcard" style="margin-top:0.75rem;" id="pushSettingsCard">
+      ${renderPushSettingsInner()}
     </div>
 
     <div class="matcard" style="margin-top:0.75rem;">

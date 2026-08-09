@@ -7,11 +7,54 @@
     getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot,
     collection, query, where, arrayUnion, arrayRemove
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { firebaseConfig } from "../../assets/firebase-config.js";
+  import { firebaseConfig, vapidKey } from "../../assets/firebase-config.js";
+  import { getMessaging, getToken as getFcmToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
   const fbApp = initializeApp(firebaseConfig);
   const auth = getAuth(fbApp);
   const db = getFirestore(fbApp);
+
+  // ---- push-уведомления (минимальный первый шаг, см. push-notifications.md) ----
+  function isIOS(){
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  }
+  function isStandalone(){
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+  function pushSupported(){
+    return ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window);
+  }
+  window.__pushStatus = function(){
+    if(!pushSupported()) return 'unsupported';
+    if(isIOS() && !isStandalone()) return 'ios-needs-install';
+    if(Notification.permission === 'granted') return 'granted';
+    if(Notification.permission === 'denied') return 'denied';
+    return 'default';
+  };
+
+  window.__fbEnablePush = async function(){
+    if(!pushSupported()){ showToast('Этот браузер не поддерживает уведомления'); return; }
+    if(isIOS() && !isStandalone()){
+      showToast('Сначала установи приложение на экран (⚙️ → значок «Поделиться» → «На экран Домой»), потом включай уведомления оттуда', 'info', 8000);
+      return;
+    }
+    try{
+      const permission = await Notification.requestPermission();
+      if(permission !== 'granted'){ showToast('Уведомления не разрешены — можно включить позже в настройках браузера'); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const messaging = getMessaging(fbApp);
+      const token = await getFcmToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
+      if(!token){ showToast('Не получилось получить токен уведомлений'); return; }
+      if(currentUid){
+        await setDoc(doc(db, 'users', currentUid, 'appdata', 'meta'), { pushToken: token }, { merge: true });
+      }
+      showToast('Уведомления включены!', 'success', 4000);
+      if(window.refreshSettingsPushStatus) window.refreshSettingsPushStatus();
+    }catch(e){
+      console.error('enable push failed', e);
+      showToast('Не получилось включить уведомления: ' + (e.message||'ошибка'));
+    }
+  };
 
   let currentUid = null;
   let unsubStudents = null;

@@ -106,18 +106,32 @@
   window.__fbAddTutorByCode = async function (code) {
     const linkRef = doc(db, 'studentLinks', code);
     const myUid = auth.currentUser.uid;
+    let capturedTutorUid = null, capturedStudentId = null;
     await runTransaction(db, async (tx) => {
       const linkSnap = await tx.get(linkRef);
       if (!linkSnap.exists() || linkSnap.data().claimed) {
         throw new Error('Такого кода не существует или он уже использован');
       }
       const { tutorUid, studentId } = linkSnap.data();
+      capturedTutorUid = tutorUid; capturedStudentId = studentId;
       tx.update(linkRef, { claimed: true, claimedBy: myUid });
       tx.set(doc(db, 'studentAccess', myUid), { isStudent: true }, { merge: true });
       tx.set(doc(db, 'studentAccess', myUid, 'links', tutorUid), { studentId });
     });
+    notifyNewStudent(capturedTutorUid, capturedStudentId);
     await loadAllTutorLinks(myUid);
   };
+
+  async function notifyNewStudent(tutorUid, studentId) {
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await fetch('https://ct030786.tw1.ru/api/send-push.php', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'new_student', targetTutorUid: tutorUid, studentId }),
+      });
+    } catch (e) { console.error('push notify failed', e); }
+  }
 
   async function loadAllTutorLinks(uid){
     const linksSnap = await getDocs(collection(db, 'studentAccess', uid, 'links'));

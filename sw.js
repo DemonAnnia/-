@@ -43,3 +43,33 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
+// ---- push-уведомления (см. push-notifications.md) ----
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) {}
+  const title = (data.notification && data.notification.title) || data.title || "Кабинет репетитора";
+  const body = (data.notification && data.notification.body) || data.body || "";
+  const link = (data.fcmOptions && data.fcmOptions.link) || data.link || "./";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "./icons/icon-192.png",
+      badge: "./icons/icon-192.png",
+      data: { link },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const link = (event.notification.data && event.notification.data.link) || "./";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(link.replace("./", "")) && "focus" in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(link);
+    })
+  );
+});
