@@ -32,56 +32,12 @@
   <button class="drawer-item" style="color:#B7BEC7; cursor:default;" onclick="showToast('Календарь занятий — в работе, скоро будет.', 'info', 4000)">📅 Календарь <span style="margin-left:auto; font-size:0.6875rem; background:#F1F3F5; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></button>
 
   <hr class="drawer-hr">
-  <button class="drawer-item" onclick="toggleSettingsPanel()">⚙️ Настройки</button>
-  <div id="settingsPanel" style="display:none; padding-left:0.5rem;">
-    <button class="drawer-item" onclick="syncBaseLinks()">🔄 Обновить базовые ссылки из файла</button>
-    <button class="drawer-item" onclick="downloadBackup()">💾 Скачать резервную копию</button>
-    <button class="drawer-item" onclick="document.getElementById('restoreFile').click()">📂 Загрузить из копии</button>
-    <input id="restoreFile" type="file" accept="application/json" style="display:none;" onchange="restoreBackup(this)">
-    <button class="drawer-item" onclick="toggleAccountPanel()">🔑 Пароль</button>
-    <div id="accountPanel" style="display:none; background:#F6F7F5; border-radius:0.625rem; padding:0.75rem; margin:0.375rem 0;">
-      <div style="font-size:0.75rem; color:#5A6472; margin-bottom:0.5rem;">Чтобы сменить пароль, подтверди текущим</div>
-      <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-      <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-      <button onclick="changePassword()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сменить пароль</button>
-    </div>
-
-    <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin:0.75rem 0 0.375rem;">Моя тема</div>
-    <div id="tutorThemePicker" style="padding:0 0.625rem 0.5rem;"></div>
-
-    <button class="drawer-item" onclick="toggleProfilePanel()">👤 О себе — видно ученикам</button>
-    <div id="profilePanel" style="display:none; background:#F6F7F5; border-radius:0.625rem; padding:0.75rem; margin:0.375rem 0;">
-      <input id="profName" type="text" placeholder="ФИО" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-      <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-        <input id="profSubject" type="text" placeholder="Предмет" style="flex:1; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-      </div>
-      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.5rem; cursor:pointer;">
-        <input id="profShowSubject" type="checkbox"> Показывать предмет ученикам
-      </label>
-      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem;">Контакты</div>
-      <div id="profContacts"></div>
-      <div style="display:flex; gap:0.375rem; margin:0.375rem 0;">
-        <select id="profContactType" onchange="updateContactPlaceholder()" style="width:34%; font-size:0.78125rem; padding:0.375rem 0.25rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-          <option value="telegram">Telegram</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="vk">ВК</option>
-          <option value="phone">Телефон</option>
-          <option value="email">Почта</option>
-        </select>
-        <input id="profContactValue" type="text" placeholder="username без @" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-        <button onclick="addProfileContact()" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer;">+</button>
-      </div>
-      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.5rem; cursor:pointer;">
-        <input id="profShowContacts" type="checkbox"> Показывать контакты ученикам
-      </label>
-      <button onclick="saveProfile()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сохранить профиль</button>
-    </div>
-
-    <button class="drawer-item" onclick="doLogout()" style="color:#C0392B;">🚪 Выйти</button>
-  </div>
+  <button class="drawer-item" onclick="showSettingsView()">⚙️ Настройки</button>
+  <input id="restoreFile" type="file" accept="application/json" style="display:none;" onchange="restoreBackup(this)">
 
   <hr class="drawer-hr">
   <button id="installBtnDrawer" class="drawer-item" style="display:none;">📲 Установить приложение</button>
+  <button class="drawer-item" onclick="doLogout()" style="color:#C0392B;">🚪 Выйти</button>
 </div>
 
 <div id="appRoot" style="display:none;">
@@ -316,12 +272,19 @@ function addStudent(){
     needsPaymentReport:true, subjects:[], files:[]});
   save();
 }
+let messengerAddKind = {}; // studentId -> 'child'|'parent', default 'child'
+function setMessengerKind(sid, kind){ messengerAddKind[sid] = kind; render(); }
+function groupMessengers(messengers){
+  const child = [], parent = [];
+  (messengers||[]).forEach(m => (m.for === 'parent' ? parent : child).push(m));
+  return { child, parent };
+}
 function addMessenger(id){
   const s = data.students.find(x=>x.id===id);
   const labelEl = document.getElementById('mlabel-'+id);
   const urlEl = document.getElementById('murl-'+id);
   if(!urlEl.value) return;
-  s.messengers.push({id:uid(), label:labelEl.value, url:urlEl.value});
+  s.messengers.push({id:uid(), label:labelEl.value, url:urlEl.value, for: messengerAddKind[id] || 'child'});
   labelEl.value=''; urlEl.value='';
   save();
 }
@@ -428,7 +391,16 @@ function cardHTML(s){
           ${s.format!=='Очно'?`<a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?accent.ink:''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>`:''}
           <button class="btn btn-done" onclick="markDone('${s.id}')">✓ Урок прошёл</button>
         </div>
-        ${s.messengers.length ? `<div class="chiprow">${s.messengers.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank">💬 ${esc(m.label||'Чат')}</a>`).join('')}</div>` : ''}
+        ${(() => {
+          const g = groupMessengers(s.messengers);
+          const chips = list => `<div class="chiprow">${list.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank">💬 ${esc(m.label||'Чат')}</a>`).join('')}</div>`;
+          if(!g.child.length && !g.parent.length) return '';
+          let out = '';
+          if(g.child.length) out += chips(g.child);
+          if(g.child.length && g.parent.length) out += `<hr style="border:none; border-top:1px solid #EEF0F2; margin:0.5rem 0;">`;
+          if(g.parent.length) out += chips(g.parent);
+          return out;
+        })()}
         <button class="btn" style="width:100%;margin-top:8px;background:${accent.soft};color:${accent.ink};border:1px solid ${accent.soft};" onclick="toggleStudentMsg('${s.id}')">📨 Сообщение ученику со ссылками</button>
         ${msg?`<div class="msgbox"><div style="flex:1;">${esc(msg)}</div>${s.needsPaymentReport?`<button class="iconbtn" onclick="copyText('${esc(msg)}', this)">⧉</button>`:''}</div>`:''}
         ${studentMsgOpen[s.id] ? renderStudentMsgBox(s) : ''}
@@ -441,15 +413,28 @@ function cardHTML(s){
         <div style="padding-top:0;">
           ${s.format!=='Очно'?`<div class="field"><span>🎥</span><input type="text" placeholder="ссылка на звонок (Зум / Телемост)" value="${esc(s.callLink)}" onchange="updateStudent('${s.id}',{callLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.callLink)}', this)">⧉</button></div>`:''}
           ${s.format!=='Очно'?`<div class="field"><span>✏️</span><input type="text" placeholder="ссылка на доску" value="${esc(s.boardLink)}" onchange="updateStudent('${s.id}',{boardLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.boardLink)}', this)">⧉</button></div>`:''}
-          <div class="filelabel" style="margin-top:0.5rem;">Ссылки на чат (можно несколько — для ребёнка и для родителя)</div>
-          ${s.messengers.length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>' : s.messengers.map(m=>`
-            <div class="filerow">
-              <span>💬</span>
-              <a href="${esc(m.url)}" target="_blank" rel="noreferrer">${esc(m.label||m.url)}</a>
-              <button class="iconbtn" onclick="removeMessenger('${s.id}','${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
-            </div>`).join('')}
+          <div class="filelabel" style="margin-top:0.5rem;">Ссылки на чат</div>
+          ${(() => {
+            const g = groupMessengers(s.messengers);
+            const row = m => `
+              <div class="filerow">
+                <span>💬</span>
+                <a href="${esc(m.url)}" target="_blank" rel="noreferrer">${esc(m.label||m.url)}</a>
+                <button class="iconbtn" onclick="removeMessenger('${s.id}','${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+              </div>`;
+            if(!g.child.length && !g.parent.length) return '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>';
+            let out = '';
+            if(g.child.length){ out += `<div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">Ребёнку</div>` + g.child.map(row).join(''); }
+            if(g.child.length && g.parent.length) out += `<hr style="border:none; border-top:1px solid #EEF0F2; margin:0.5rem 0;">`;
+            if(g.parent.length){ out += `<div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">Родителю</div>` + g.parent.map(row).join(''); }
+            return out;
+          })()}
+          <div style="display:flex; gap:0.375rem; margin:0.5rem 0 0.375rem;">
+            <button onclick="setMessengerKind('${s.id}','child')" class="mat-pill ${(messengerAddKind[s.id]||'child')==='child'?'picked':''}" style="flex:1; justify-content:center;">Ребёнку</button>
+            <button onclick="setMessengerKind('${s.id}','parent')" class="mat-pill ${messengerAddKind[s.id]==='parent'?'picked':''}" style="flex:1; justify-content:center;">Родителю</button>
+          </div>
           <div class="fileadd">
-            <input class="fname" type="text" id="mlabel-${s.id}" placeholder="кому (ВК / родителю)">
+            <input class="fname" type="text" id="mlabel-${s.id}" placeholder="подпись (ВК, ТГ...)">
             <input class="furl" type="text" id="murl-${s.id}" placeholder="ссылка: wa.me/... или t.me/...">
             <button class="addfilebtn" onclick="addMessenger('${s.id}')">+</button>
           </div>
@@ -505,19 +490,8 @@ function toggleDrawerSection(section){
   renderDrawerLists();
 }
 
-let settingsPanelOpen = false;
-function toggleSettingsPanel(){
-  settingsPanelOpen = !settingsPanelOpen;
-  document.getElementById('settingsPanel').style.display = settingsPanelOpen ? 'block' : 'none';
-}
-
 let studentThemes = {}; // studentId -> themeId, populated by module script listeners
 
-function renderTutorThemePicker(){
-  const el = document.getElementById('tutorThemePicker');
-  if(!el) return;
-  el.innerHTML = themePickerHTML(data.theme || 'classic', 'setTutorTheme');
-}
 function applyTutorTheme(){
   const t = THEMES[data.theme || 'classic'] || THEMES.classic;
   document.body.style.backgroundColor = t.bg;
@@ -525,10 +499,11 @@ function applyTutorTheme(){
 function setTutorTheme(themeId){
   data.theme = themeId;
   applyTutorTheme();
-  renderTutorThemePicker();
   save();
+  if(viewMode==='settings') render();
 }
 
+const CONTACT_TYPE_ORDER = ['telegram','whatsapp','vk','phone','email'];
 const CONTACT_TYPES = {
   telegram: { label:'Telegram', icon:'✈️', placeholder:'username без @', build: v => `https://t.me/${v}` },
   whatsapp: { label:'WhatsApp', icon:'📱', placeholder:'номер с кодом страны, без +', build: v => `https://wa.me/${v}` },
@@ -538,63 +513,52 @@ const CONTACT_TYPES = {
 };
 function contactLink(c){ const t = CONTACT_TYPES[c.type]; return (t && c.value) ? t.build(c.value) : '#'; }
 
-function updateContactPlaceholder(){
-  const type = document.getElementById('profContactType').value;
-  const t = CONTACT_TYPES[type];
-  document.getElementById('profContactValue').placeholder = t ? t.placeholder : '';
-}
-
-let profilePanelOpen = false;
 let profileContacts = [];
 let profilePrimaryId = null;
-function toggleProfilePanel(){
-  profilePanelOpen = !profilePanelOpen;
-  document.getElementById('profilePanel').style.display = profilePanelOpen ? 'block' : 'none';
-}
 function setPrimaryContact(id){
   profilePrimaryId = id;
-  renderProfileContacts();
+  renderSettingsView();
 }
-function renderProfileContacts(){
-  const el = document.getElementById('profContacts');
-  if(!el) return;
-  el.innerHTML = profileContacts.length===0
-    ? '<div style="font-size:0.75rem;color:#9BA3AE;margin-bottom:0.375rem;">Пока пусто</div>'
-    : profileContacts.map(c => {
-      const t = CONTACT_TYPES[c.type] || {label:c.type, icon:'🔗'};
-      const isPrimary = profilePrimaryId === c.id;
-      return `
-      <div style="display:flex; align-items:center; gap:0.375rem; margin-bottom:0.25rem;">
-        <button onclick="setPrimaryContact('${c.id}')" title="Сделать основным" style="width:1.375rem; height:1.375rem; border-radius:999px; border:1px solid ${isPrimary?'#F0B429':'#C9D2DB'}; background:${isPrimary?'#FEF3D6':'#fff'}; color:${isPrimary?'#B8860B':'#C9D2DB'}; font-size:0.75rem; cursor:pointer; flex-shrink:0;">★</button>
-        <span style="flex:1; font-size:0.78125rem; color:#3A4250;">${t.icon} ${esc(t.label)}: ${esc(c.value)}</span>
-        <a href="${contactLink(c)}" target="_blank" style="font-size:0.71875rem; color:#2C4A7C;">проверить</a>
-        <button onclick="removeProfileContact('${c.id}')" style="width:1.5rem; height:1.5rem; border-radius:0.375rem; border:1px solid #F0DAD6; background:#FBEEEC; color:#C0392B; cursor:pointer;">✕</button>
-      </div>`;}).join('');
-}
-function addProfileContact(){
-  const type = document.getElementById('profContactType').value;
-  const value = document.getElementById('profContactValue').value.trim();
-  if(!value){ showToast('Впиши значение для контакта'); return; }
+function addProfileContact(type){
+  const input = document.getElementById('newcontact-'+type);
+  const value = input.value.trim();
+  if(!value){ return; }
   const newContact = { id: uid(), type, value };
   profileContacts.push(newContact);
   if(!profilePrimaryId) profilePrimaryId = newContact.id;
-  document.getElementById('profContactValue').value = '';
-  renderProfileContacts();
+  renderSettingsView();
 }
 function removeProfileContact(id){
   profileContacts = profileContacts.filter(c => c.id !== id);
   if(profilePrimaryId === id) profilePrimaryId = profileContacts[0] ? profileContacts[0].id : null;
-  renderProfileContacts();
+  renderSettingsView();
 }
 function loadProfileIntoForm(p){
-  document.getElementById('profName').value = p.name || '';
-  document.getElementById('profSubject').value = p.subject || '';
-  document.getElementById('profShowSubject').checked = !!p.showSubject;
-  document.getElementById('profShowContacts').checked = !!p.showContacts;
+  window.__profileData = p;
   profileContacts = p.contacts || [];
   profilePrimaryId = p.primaryContactId || (profileContacts[0] ? profileContacts[0].id : null);
-  renderProfileContacts();
-  updateContactPlaceholder();
+  if(viewMode==='settings') renderSettingsView();
+}
+function contactTypeGridHTML(){
+  return CONTACT_TYPE_ORDER.map(type => {
+    const t = CONTACT_TYPES[type];
+    const existing = profileContacts.filter(c => c.type === type);
+    return `
+      <div style="margin-bottom:0.625rem;">
+        <div style="font-size:0.75rem; font-weight:700; color:#5A6472; margin-bottom:0.25rem;">${t.icon} ${t.label}</div>
+        ${existing.map(c => `
+          <div style="display:flex; align-items:center; gap:0.375rem; margin-bottom:0.25rem;">
+            <button onclick="setPrimaryContact('${c.id}')" title="Сделать основным" style="width:1.375rem; height:1.375rem; border-radius:999px; border:1px solid ${profilePrimaryId===c.id?'#F0B429':'#C9D2DB'}; background:${profilePrimaryId===c.id?'#FEF3D6':'#fff'}; color:${profilePrimaryId===c.id?'#B8860B':'#C9D2DB'}; font-size:0.75rem; cursor:pointer; flex-shrink:0;">★</button>
+            <span style="flex:1; min-width:0; font-size:0.78125rem; color:#3A4250; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c.value)}</span>
+            <a href="${contactLink(c)}" target="_blank" style="font-size:0.71875rem; color:#2C4A7C; flex-shrink:0;">проверить</a>
+            <button onclick="removeProfileContact('${c.id}')" style="width:1.5rem; height:1.5rem; border-radius:0.375rem; border:1px solid #F0DAD6; background:#FBEEEC; color:#C0392B; cursor:pointer; flex-shrink:0;">✕</button>
+          </div>`).join('')}
+        <div style="display:flex; gap:0.375rem;">
+          <input id="newcontact-${type}" type="text" placeholder="${t.placeholder}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          <button onclick="addProfileContact('${type}')" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer; flex-shrink:0;">+</button>
+        </div>
+      </div>`;
+  }).join('');
 }
 function saveProfile(){
   const profile = {
@@ -607,6 +571,63 @@ function saveProfile(){
   };
   if(window.__fbSaveProfile) window.__fbSaveProfile(profile);
   showToast('Профиль сохранён', 'success', 4000);
+}
+
+function showSettingsView(){
+  viewMode = 'settings';
+  closeDrawer();
+  render();
+}
+function renderSettingsView(){
+  const wrap = document.getElementById('mainArea');
+  if(!wrap) return;
+  const p = window.__profileData || {};
+  wrap.innerHTML = `
+    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
+      <button class="hamburger" onclick="showStudentsView()" title="Назад к ученикам">←</button>
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">⚙️ Настройки</div>
+    </div>
+
+    <div class="matcard">
+      <div class="filelabel">Данные</div>
+      <button class="drawer-item" style="padding-left:0;" onclick="syncBaseLinks()">🔄 Обновить базовые ссылки из файла</button>
+      <button class="drawer-item" style="padding-left:0;" onclick="downloadBackup()">💾 Скачать резервную копию</button>
+      <button class="drawer-item" style="padding-left:0;" onclick="document.getElementById('restoreFile').click()">📂 Загрузить из копии</button>
+    </div>
+
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+        <div class="filelabel" style="margin:0;">Пароль</div>
+        <a href="#" onclick="toggleAccountPanel();return false;" style="font-size:0.78125rem; color:#5A6472;">Сменить</a>
+      </div>
+      <div id="accountPanel" style="display:none;">
+        <div style="font-size:0.75rem; color:#5A6472; margin-bottom:0.5rem;">Чтобы сменить пароль, подтверди текущим</div>
+        <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+        <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+        <button onclick="changePassword()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сменить пароль</button>
+      </div>
+    </div>
+
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">Моя тема</div>
+      ${themePickerHTML(data.theme || 'classic', 'setTutorTheme')}
+    </div>
+
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">О себе — видно ученикам</div>
+      <input id="profName" type="text" placeholder="ФИО" value="${esc(p.name)}" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <input id="profSubject" type="text" placeholder="Предмет" value="${esc(p.subject)}" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.75rem; cursor:pointer;">
+        <input id="profShowSubject" type="checkbox" ${p.showSubject?'checked':''}> Показывать предмет ученикам
+      </label>
+      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.5rem;">Контакты</div>
+      ${contactTypeGridHTML()}
+      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.5rem; cursor:pointer;">
+        <input id="profShowContacts" type="checkbox" ${p.showContacts?'checked':''}> Показывать контакты ученикам
+      </label>
+      <button onclick="saveProfile()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сохранить профиль</button>
+    </div>
+  `;
 }
 
 function renderDrawerLists(){
@@ -663,25 +684,29 @@ function onMatFileSelected(){
   const input = document.getElementById('matFile');
   const infoEl = document.getElementById('matFileInfo');
   const file = input.files[0];
-  if(!file){ selectedMatFile = null; if(infoEl) infoEl.textContent = ''; return; }
+  if(!file){ selectedMatFile = null; if(infoEl) infoEl.textContent = 'Файл не выбран'; return; }
   const ext = (file.name.split('.').pop() || '').toLowerCase();
   if(VIDEO_EXT.includes(ext)){
     showToast('Видео сюда не грузим — переключись на «Ссылка» и вставь ссылку на YouTube/облако');
-    input.value = ''; selectedMatFile = null; if(infoEl) infoEl.textContent = '';
+    input.value = ''; selectedMatFile = null; if(infoEl) infoEl.textContent = 'Файл не выбран';
     return;
   }
   if(!ALLOWED_EXT.includes(ext)){
     showToast('Такой тип файла нельзя загрузить: .' + ext);
-    input.value = ''; selectedMatFile = null; if(infoEl) infoEl.textContent = '';
+    input.value = ''; selectedMatFile = null; if(infoEl) infoEl.textContent = 'Файл не выбран';
     return;
   }
   if(file.size > MAX_FILE_SIZE){
     showToast('Файл слишком большой — максимум 20 МБ');
-    input.value = ''; selectedMatFile = null; if(infoEl) infoEl.textContent = '';
+    input.value = ''; selectedMatFile = null; if(infoEl) infoEl.textContent = 'Файл не выбран';
     return;
   }
   selectedMatFile = file;
   if(infoEl) infoEl.textContent = `${file.name} · ${(file.size/1024/1024).toFixed(1)} МБ`;
+  const nameEl = document.getElementById('matName');
+  if(nameEl && !nameEl.value.trim()){
+    nameEl.value = file.name.replace(/\.[^.]+$/, '');
+  }
 }
 
 async function addMaterial(){
@@ -699,7 +724,7 @@ async function addMaterial(){
       const result = await window.__fbUploadMaterialFile(selectedMatFile);
       const material = {
         id: uid(), name: name || selectedMatFile.name, url: result.url,
-        storage: 'timeweb', fileName: result.fileName, fileOwnerUid: currentUid, category: matCategory,
+        storage: 'timeweb', fileName: result.fileName, fileOwnerUid: window.__currentUid, category: matCategory,
         visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds]
       };
       data.materials = [...(data.materials||[]), material];
@@ -738,7 +763,7 @@ async function deleteMaterial(id){
   render();
   // физический файл на Timeweb трогаем только если ЭТОТ репетитор — владелец файла
   // (пока нет обмена материалами между репетиторами, это всегда так)
-  if(m && m.storage === 'timeweb' && m.fileOwnerUid === currentUid && window.__fbDeleteMaterialFile){
+  if(m && m.storage === 'timeweb' && m.fileOwnerUid === window.__currentUid && window.__fbDeleteMaterialFile){
     window.__fbDeleteMaterialFile(m.fileName).catch(() => {});
   }
 }
@@ -812,8 +837,11 @@ function renderMaterialsView(){
         <button onclick="setMatMode('upload')" class="mat-pill ${matMode==='upload'?'picked':''}" style="flex:1; justify-content:center;">📁 Загрузить файл</button>
       </div>
       ${matMode==='upload' ? `
-        <input type="file" id="matFile" onchange="onMatFileSelected()" style="width:100%; font-size:0.78125rem; margin-bottom:0.25rem;">
-        <div id="matFileInfo" style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.375rem;"></div>
+        <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+          <button type="button" onclick="document.getElementById('matFile').click()" style="padding:0.5rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#3A4250; font-size:0.78125rem; font-weight:600; cursor:pointer; white-space:nowrap;">📁 Выбрать файл</button>
+          <span id="matFileInfo" style="font-size:0.78125rem; color:#9BA3AE; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Файл не выбран</span>
+        </div>
+        <input type="file" id="matFile" onchange="onMatFileSelected()" style="display:none;">
         <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.375rem;">До 20 МБ. Видео сюда не грузим — для видео используй ссылку.</div>
       ` : `
         <input id="matUrl" type="text" placeholder="ссылка на файл" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
@@ -835,12 +863,15 @@ function renderMaterialsView(){
 
 function render(){
   renderDrawerLists();
-  renderTutorThemePicker();
   applyTutorTheme();
   const wrap = document.getElementById('mainArea');
 
   if(viewMode === 'materials'){
     wrap.innerHTML = renderMaterialsView();
+    return;
+  }
+  if(viewMode === 'settings'){
+    renderSettingsView();
     return;
   }
 
@@ -1115,6 +1146,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
   onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.replace('../index.html'); return; }
     currentUid = user.uid;
+    window.__currentUid = user.uid;
     const accessSnap = await getDoc(doc(db, 'studentAccess', user.uid));
     if (accessSnap.exists()) { window.location.replace('student.html'); return; }
     await migrateLegacyIfNeeded(user.uid);

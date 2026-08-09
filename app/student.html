@@ -117,14 +117,15 @@ function applyTheme(){
 
 // ---- typed contacts (matches tutor.html's CONTACT_TYPES) ----
 const CONTACT_TYPES = {
-  telegram: { label:'Telegram', icon:'✈️', build: v => `https://t.me/${v}` },
-  whatsapp: { label:'WhatsApp', icon:'📱', build: v => `https://wa.me/${v}` },
-  vk:       { label:'ВК',       icon:'💬', build: v => `https://vk.com/im?sel=${v}` },
-  phone:    { label:'Телефон',  icon:'☎️', build: v => `tel:${v}` },
-  email:    { label:'Почта',    icon:'✉️', build: v => `mailto:${v}` },
+  telegram: { label:'Telegram', icon:'✈️', action:'Написать в Telegram', build: v => `https://t.me/${v}` },
+  whatsapp: { label:'WhatsApp', icon:'📱', action:'Написать в WhatsApp', build: v => `https://wa.me/${v}` },
+  vk:       { label:'ВК',       icon:'💬', action:'Написать в ВК', build: v => `https://vk.com/im?sel=${v}` },
+  phone:    { label:'Телефон',  icon:'☎️', action:'Позвонить', build: v => `tel:${v}` },
+  email:    { label:'Почта',    icon:'✉️', action:'Написать на почту', build: v => `mailto:${v}` },
 };
 function contactLink(c){ const t = CONTACT_TYPES[c.type]; return (t && c.value) ? t.build(c.value) : '#'; }
 function contactLabel(c){ const t = CONTACT_TYPES[c.type]; return t ? t.label : 'контакт'; }
+function contactAction(c){ const t = CONTACT_TYPES[c.type]; return t ? t.action : 'Написать'; }
 function contactIcon(c){ const t = CONTACT_TYPES[c.type]; return t ? t.icon : '🔗'; }
 
 let accountPanelOpen = false;
@@ -199,8 +200,8 @@ function renderTutorSection(profile){
       <div style="font-weight:600; font-size:1rem;">${esc(p.name)}</div>
       ${p.showSubject && p.subject ? `<div style="font-size:0.8125rem; color:#5A6472; margin-top:0.125rem;">${esc(p.subject)}</div>` : ''}
       ${p.showContacts && primary ? `
-        <a href="${contactLink(primary)}" target="_blank" style="display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-top:0.875rem; padding:0.625rem 0; border-radius:0.625rem; background:#1F2A3D; color:#fff; font-weight:600; font-size:0.875rem; text-decoration:none;">
-          ${contactIcon(primary)} Написать в ${contactLabel(primary)}
+        <a href="${contactLink(primary)}" target="_blank" title="${esc(contactLink(primary))}" style="display:flex; align-items:center; justify-content:center; gap:0.5rem; margin-top:0.875rem; padding:0.625rem 0; border-radius:0.625rem; background:#1F2A3D; color:#fff; font-weight:600; font-size:0.875rem; text-decoration:none;">
+          ${contactIcon(primary)} ${contactAction(primary)}
         </a>` : ''}
       ${p.showContacts && others.length ? `
         <div style="text-align:center; margin-top:0.5rem;">
@@ -208,7 +209,7 @@ function renderTutorSection(profile){
         </div>
         <div id="otherContacts" style="display:${otherContactsOpen?'block':'none'}; margin-top:0.5rem;">
           <div style="display:flex; flex-wrap:wrap; gap:0.375rem; justify-content:center;">
-            ${others.map(c=>`<a href="${contactLink(c)}" target="_blank" style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.625rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#EAF0F6; color:#2C4A7C; text-decoration:none;">${contactIcon(c)} ${contactLabel(c)}</a>`).join('')}
+            ${others.map(c=>`<a href="${contactLink(c)}" target="_blank" title="${esc(contactLink(c))}" style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.625rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#EAF0F6; color:#2C4A7C; text-decoration:none;">${contactIcon(c)} ${contactLabel(c)}</a>`).join('')}
           </div>
         </div>` : ''}
     </div></div>`;
