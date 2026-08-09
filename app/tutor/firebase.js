@@ -46,7 +46,8 @@
       const token = await getFcmToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
       if(!token){ showToast('Не получилось получить токен уведомлений'); return; }
       if(currentUid){
-        await setDoc(doc(db, 'users', currentUid, 'appdata', 'meta'), { pushToken: token }, { merge: true });
+        const safeId = token.replace(/[\/]/g, '_');
+        await setDoc(doc(db, 'users', currentUid, 'pushTokens', safeId), { token, updatedAt: Date.now() });
       }
       showToast('Уведомления включены!', 'success', 4000);
       if(window.refreshSettingsPushStatus) window.refreshSettingsPushStatus();
@@ -68,7 +69,7 @@
       });
       const json = await resp.json().catch(() => ({}));
       if(resp.ok && json.success){
-        showToast('Сервер принял и отправил! Если уведомление не пришло — дело в браузере/телефоне, не в коде.', 'success', 8000);
+        showToast(`Сервер отправил на ${json.sentTo||0} из ${json.totalDevices||0} устройств. Если конкретное устройство не получило — дело в его настройках, не в коде.`, 'success', 10000);
       } else if(resp.ok && json.success === false){
         showToast('Сервер ответил: ' + (json.note || 'токен не найден — сначала нажми «Включить» выше'), 'error', 10000);
       } else {
