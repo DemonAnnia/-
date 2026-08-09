@@ -167,6 +167,7 @@ async function submitMaterialForm(){
       data.materials = [...(data.materials||[]), material];
       if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(material);
       if(window.__fbRegisterFileRef) window.__fbRegisterFileRef(window.__currentUid, result.fileName);
+      if(visibleToFriends && window.__fbNotifyFriendsShared) window.__fbNotifyFriendsShared();
       try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
       showToast('Файл загружен и добавлен!', 'success', 3000);
       closeAddForm();
@@ -185,6 +186,7 @@ async function submitMaterialForm(){
   };
   data.materials = [...(data.materials||[]), material];
   if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(material);
+  if(visibleToFriends && window.__fbNotifyFriendsShared) window.__fbNotifyFriendsShared();
   try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
   closeAddForm();
 }

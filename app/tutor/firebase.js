@@ -169,6 +169,20 @@
   };
 
   const TIMEWEB_BASE = 'https://ct030786.tw1.ru';
+
+  async function sendSimplePush(type, targetTutorUid, extra){
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await fetch(TIMEWEB_BASE + '/api/send-push.php', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, targetTutorUid, ...(extra||{}) }),
+      });
+    } catch (e) { console.error('push notify failed (' + type + ')', e); }
+  }
+  window.__fbNotifyFriendsShared = function(){
+    (friendUids||[]).forEach(fUid => sendSimplePush('friend_shared', fUid));
+  };
   window.__fbUploadMaterialFile = async function (file) {
     const token = await auth.currentUser.getIdToken();
     const formData = new FormData();
@@ -263,6 +277,7 @@
     await setDoc(doc(db, 'friendships', pairId), {
       uidA: currentUid, uidB: ownerUid, viaCode: code, createdAt: Date.now()
     });
+    sendSimplePush('new_friend', ownerUid);
     try {
       const profSnap = await getDoc(doc(db, 'users', ownerUid, 'appdata', 'profile'));
       return profSnap.exists() ? profSnap.data().name : null;
