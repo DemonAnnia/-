@@ -1,4 +1,4 @@
-const CACHE_NAME = "kabinet-repetitora-v5";
+const CACHE_NAME = "kabinet-repetitora-v6";
 const ASSETS = [
   "./index.html",
   "./app/tutor.html",
@@ -56,6 +56,11 @@ self.addEventListener("push", (event) => {
       body,
       icon: "./icons/icon-192.png",
       badge: "./icons/icon-192.png",
+      vibrate: [200, 100, 200],
+      silent: false,
+      requireInteraction: false,
+      tag: "kabinet-repetitora-notification",
+      renotify: true,
       data: { link },
     })
   );
