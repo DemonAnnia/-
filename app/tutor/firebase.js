@@ -4,7 +4,8 @@
     EmailAuthProvider, reauthenticateWithCredential, updatePassword
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, query, where
+    getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot,
+    collection, query, where, arrayUnion, arrayRemove
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { firebaseConfig } from "../../assets/firebase-config.js";
 
@@ -108,6 +109,38 @@
     if (!resp.ok || !json.success) throw new Error(json.error || 'Сервер отказал в удалении');
     return json;
   };
+  function fileRefId(fileOwnerUid, fileName){ return fileOwnerUid + '_' + fileName; }
+  window.__fbRegisterFileRef = async function (fileOwnerUid, fileName) {
+    if (!currentUid || !fileName) return;
+    try {
+      await setDoc(doc(db, 'fileRefs', fileRefId(fileOwnerUid, fileName)), {
+        fileOwnerUid, fileName, referencedBy: arrayUnion(currentUid)
+      }, { merge: true });
+    } catch (e) { console.error('register file ref failed', e); }
+  };
+  window.__fbUnregisterFileRef = async function (fileOwnerUid, fileName) {
+    if (!currentUid || !fileName) return;
+    try {
+      await updateDoc(doc(db, 'fileRefs', fileRefId(fileOwnerUid, fileName)), {
+        referencedBy: arrayRemove(currentUid)
+      });
+    } catch (e) { /* doc может уже не существовать — не критично */ }
+  };
+  // физическая уборка на Timeweb — только у ВЛАДЕЛЬЦА файла, только когда счётчик дошёл до нуля,
+  // проверяется раз при каждом входе в кабинет, никогда в момент чьего-либо удаления записи
+  async function cleanupOrphanedFiles(uid){
+    try {
+      const snap = await getDocs(query(collection(db, 'fileRefs'), where('fileOwnerUid', '==', uid)));
+      for (const d of snap.docs) {
+        const refData = d.data();
+        if (!refData.referencedBy || refData.referencedBy.length === 0) {
+          try { await window.__fbDeleteMaterialFile(refData.fileName); }
+          catch (e) { console.error('physical cleanup failed', e); }
+          deleteDoc(d.ref).catch(() => {});
+        }
+      }
+    } catch (e) { console.error('cleanup query failed', e); }
+  }
   window.__fbSaveProfile = async function (profile) {
     if (!currentUid) return;
     try { await setDoc(doc(db, 'users', currentUid, 'appdata', 'profile'), profile); }
@@ -163,11 +196,12 @@
     const copy = {
       id: uid(), name: src.name, url: src.url, category: src.category || 'discuss',
       storage: src.storage, fileName: src.fileName || null, fileOwnerUid: src.storage === 'timeweb' ? friendUid : null,
-      visibleToAll: false, studentIds: [], visibleToFriends: false,
+      visibleToAll: false, studentIds: [], visibleToFriends: false, archived: false,
       copiedFrom: friendUid,
     };
     data.materials = [...(data.materials || []), copy];
     if (window.__fbUpsertMaterial) window.__fbUpsertMaterial(copy);
+    if (src.storage === 'timeweb' && window.__fbRegisterFileRef) window.__fbRegisterFileRef(friendUid, src.fileName);
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
     render();
   };
@@ -339,4 +373,5 @@
     if (accessSnap.exists()) { window.location.replace('student.html'); return; }
     await migrateLegacyIfNeeded(user.uid);
     startTutorSync(user.uid);
+    cleanupOrphanedFiles(user.uid); // не блокирует загрузку кабинета, идёт в фоне
   });

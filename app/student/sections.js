@@ -12,7 +12,7 @@ const stubCard = (icon, text) => `<div class="card"><div class="body" style="tex
 </div></div>`;
 
 function renderLessonSection(student, materials, profile){
-  const allFiles = activeSubjectFilter ? (materials||[]).filter(f => f.subject === activeSubjectFilter) : (materials || []);
+  const allFiles = (materials || []).filter(f => !f.archived).filter(f => !activeSubjectFilter || f.subject === activeSubjectFilter);
   const tutorName = (profile && profile.name) ? esc(profile.name) : null;
   const emptyText = tutorName
     ? `Здесь появятся материалы, как только ${tutorName} их добавит`

@@ -12,6 +12,8 @@ let matGradeFilter = 'all';
 function setMatGradeFilter(g){ matGradeFilter = g; render(); }
 let matSourceFilter = 'all'; // 'all' | 'mine' | 'friends' | 'shared'
 function setMatSourceFilter(v){ matSourceFilter = v; render(); }
+let showArchive = false;
+function toggleShowArchive(){ showArchive = !showArchive; render(); }
 let selectedMatFile = null;
 function setMatMode(mode){
   matMode = mode;
@@ -77,10 +79,11 @@ async function addMaterial(){
         id: uid(), name: name || selectedMatFile.name, url: result.url,
         storage: 'timeweb', fileName: result.fileName, fileOwnerUid: window.__currentUid, category: matCategory, subject, grade,
         visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds],
-        visibleToFriends
+        visibleToFriends, archived: false
       };
       data.materials = [...(data.materials||[]), material];
       if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(material);
+      if(window.__fbRegisterFileRef) window.__fbRegisterFileRef(window.__currentUid, result.fileName);
       document.getElementById('matName').value = '';
       selectedMatFile = null;
       materialPicker = { visibleToAll:false, studentIds:[] };
@@ -98,7 +101,7 @@ async function addMaterial(){
   const material = {
     id: uid(), name, url, storage:'external', fileName:null, fileOwnerUid:null, category: matCategory, subject, grade,
     visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds],
-    visibleToFriends
+    visibleToFriends, archived: false
   };
   data.materials = [...(data.materials||[]), material];
   if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(material);
@@ -108,17 +111,54 @@ async function addMaterial(){
   try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
   render();
 }
-async function deleteMaterial(id){
+let confirmDeleteFor = null;
+
+function isUsedElsewhere(m){
+  return !!(m.visibleToAll || (m.studentIds||[]).length>0 || m.visibleToFriends || m.copiedFrom);
+}
+
+function requestDeleteMaterial(id){
+  const m = (data.materials||[]).find(x=>x.id===id);
+  if(!m) return;
+  if(isUsedElsewhere(m)){
+    confirmDeleteFor = id;
+    render();
+  } else {
+    reallyDeleteMaterial(id);
+  }
+}
+function cancelDeleteMaterial(){ confirmDeleteFor = null; render(); }
+
+function archiveMaterial(id){
+  const m = (data.materials||[]).find(x=>x.id===id);
+  if(!m) return;
+  m.archived = true;
+  if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(m);
+  confirmDeleteFor = null;
+  try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
+  render();
+}
+function restoreMaterial(id){
+  const m = (data.materials||[]).find(x=>x.id===id);
+  if(!m) return;
+  m.archived = false;
+  if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(m);
+  try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
+  render();
+}
+
+async function reallyDeleteMaterial(id){
   const m = (data.materials||[]).find(x=>x.id===id);
   data.materials = (data.materials||[]).filter(x=>x.id!==id);
+  confirmDeleteFor = null;
   if(window.__fbDeleteMaterial) window.__fbDeleteMaterial(id);
   try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
   render();
-  // физический файл на Timeweb трогаем только если ЭТОТ репетитор — владелец файла.
-  // Для скопированных у друга материалов fileOwnerUid принадлежит другу — тут ничего не удаляем,
-  // мы только убираем свою запись, оригинал у владельца не трогаем.
-  if(m && m.storage === 'timeweb' && m.fileOwnerUid === window.__currentUid && window.__fbDeleteMaterialFile){
-    window.__fbDeleteMaterialFile(m.fileName).catch(() => {});
+  // Своя запись удаляется сразу и безопасно — это не трогает физический файл.
+  // Физическая уборка на Timeweb происходит отдельно, позже, когда владелец файла
+  // сам зайдёт в кабинет и увидит, что счётчик ссылок дошёл до нуля (см. firebase.js).
+  if(m && m.storage === 'timeweb' && window.__fbUnregisterFileRef){
+    window.__fbUnregisterFileRef(m.fileOwnerUid, m.fileName);
   }
 }
 async function addFriendMaterialToMine(friendUid, materialId){
@@ -161,8 +201,18 @@ function materialCardHTML(m){
           <span>${materialIcon(m.url)}</span>
           <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
           <button class="iconbtn" onclick="copyText('${esc(m.url)}', this)">⧉</button>
-          <button class="iconbtn" onclick="deleteMaterial('${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+          <button class="iconbtn" onclick="requestDeleteMaterial('${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
         </div>
+        ${confirmDeleteFor===m.id ? `
+          <div style="margin-top:0.5rem; padding:0.625rem; border-radius:0.5rem; background:#FBEEEC;">
+            <div style="font-size:0.78125rem; color:#7A2E1E; margin-bottom:0.5rem;">Этот материал сейчас кому-то виден или скопирован коллегой. Удалить совсем, или просто спрятать (архивировать), не трогая тех, кто уже видит?</div>
+            <div style="display:flex; gap:0.375rem;">
+              <button class="btn btn-off" style="flex:1;" onclick="archiveMaterial('${m.id}')">🗄 Архивировать</button>
+              <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="reallyDeleteMaterial('${m.id}')">Удалить всё равно</button>
+              <button class="btn btn-off" style="flex:1;" onclick="cancelDeleteMaterial()">Отмена</button>
+            </div>
+          </div>
+        ` : `
         <div style="margin-top:0.5rem;">
           ${editingAccessFor===m.id ? `
             ${pickerHTML(materialPicker, 'window.')}
@@ -174,11 +224,12 @@ function materialCardHTML(m){
             <div>${accessLabel(m)}</div>
             <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; padding:0.25rem 0; margin-top:0.25rem; cursor:pointer; text-decoration:underline;" onclick="startEditAccess('${m.id}')">✏️ Изменить доступ</button>
           `}
-        </div>
+        </div>`}
       </div>`;
 }
 function renderMaterialsView(){
-  const list = data.materials || [];
+  const list = (data.materials || []).filter(m => !m.archived);
+  const archivedList = (data.materials || []).filter(m => m.archived);
   const addPicker = pickerHTML(materialPicker, 'window.');
   const allGrades = [...new Set(data.students.map(s=>s.grade).filter(Boolean))];
   const filteredList = list
@@ -255,7 +306,22 @@ function renderMaterialsView(){
         <option value="friends" ${matSourceFilter==='friends'?'selected':''}>Друзья</option>
         <option value="shared" ${matSourceFilter==='shared'?'selected':''}>Общее</option>
       </select>
+      <button onclick="toggleShowArchive()" class="mat-pill ${showArchive?'picked':''}" style="flex-shrink:0;">🗄 Архив${archivedList.length?` (${archivedList.length})`:''}</button>
     </div>
+    ${showArchive ? `
+    <div class="filelabel" style="margin-top:0.5rem;">Архив</div>
+    ${archivedList.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пусто</div>' : archivedList.map(m => `
+      <div class="matcard">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span>${materialIcon(m.url)}</span>
+          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
+        </div>
+        <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
+          <button class="btn btn-done" style="flex:1;" onclick="restoreMaterial('${m.id}')">↩️ Восстановить</button>
+          <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="reallyDeleteMaterial('${m.id}')">Удалить навсегда</button>
+        </div>
+      </div>`).join('')}
+    ` : `
     ${gradeFilterHtml}
     ${subjectFilterHtml}
     ${(matSourceFilter==='all' || matSourceFilter==='mine') ? `
@@ -267,6 +333,7 @@ function renderMaterialsView(){
     <div class="filelabel" style="margin-top:1rem;">От друзей</div>
     ${(() => {
       const fm = (friendMaterials||[])
+        .filter(m => !m.archived)
         .filter(m => matSubjectFilter==='all' || m.subject===matSubjectFilter)
         .filter(m => matGradeFilter==='all' || m.grade===matGradeFilter);
       return fm.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пока никто ничем не поделился</div>' : fm.map(m => `
@@ -282,6 +349,7 @@ function renderMaterialsView(){
     ${(matSourceFilter==='all' || matSourceFilter==='shared') ? `
     <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin:0.75rem 0;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>
     ` : ''}
+    `}
   `;
 }
 
