@@ -308,9 +308,10 @@ function addSubject(id){
   const s = data.students.find(x=>x.id===id);
   const labelEl = document.getElementById('sublabel-'+id);
   const priceEl = document.getElementById('subprice-'+id);
+  const subjectEl = document.getElementById('subsubject-'+id);
   if(!labelEl.value.trim()) { showToast('Впиши название тарифа'); return; }
   if(!Array.isArray(s.subjects)) s.subjects = [];
-  s.subjects.push({ id: uid(), label: labelEl.value.trim(), price: priceEl.value.trim() });
+  s.subjects.push({ id: uid(), label: labelEl.value.trim(), price: priceEl.value.trim(), subject: subjectEl ? subjectEl.value : null });
   labelEl.value=''; priceEl.value='';
   save();
 }
@@ -376,7 +377,7 @@ function copyStudentMsg(id, btn){ copyText(msgTextById[id], btn); }
 function cardHTML(s){
     const accent = ACCENTS[s.accent] || ACCENTS[0];
     const open = data.openIds.includes(s.id);
-    const tags = s.subjects.map(sub=>`<span class="tag">${esc(sub.label)} · ${esc(sub.price)}</span>`).join('');
+    const tags = s.subjects.map(sub=>`<span class="tag">${sub.subject ? esc(sub.subject)+': ' : ''}${esc(sub.label)} · ${esc(sub.price)}</span>`).join('');
     const msg = doneMsgFor[s.id];
     const studentTheme = studentThemes[s.id];
     const themeBadge = (studentTheme && studentTheme !== 'classic' && THEMES[studentTheme])
@@ -453,9 +454,13 @@ function cardHTML(s){
           ${(s.subjects||[]).length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>' : s.subjects.map(sub=>`
             <div class="filerow">
               <span>💳</span>
-              <span style="flex:1; font-size:0.8125rem;">${esc(sub.label)} · ${esc(sub.price)}</span>
+              <span style="flex:1; font-size:0.8125rem;">${sub.subject ? `<b>${esc(sub.subject)}:</b> ` : ''}${esc(sub.label)} · ${esc(sub.price)}</span>
               <button class="iconbtn" onclick="removeSubject('${s.id}','${sub.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
             </div>`).join('')}
+          ${profileSubjects.length > 1 ? `
+            <select id="subsubject-${s.id}" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+              ${profileSubjects.map(sub=>`<option value="${esc(sub)}">${esc(sub)}</option>`).join('')}
+            </select>` : ''}
           <div class="fileadd">
             <input class="fname" type="text" id="sublabel-${s.id}" placeholder="название (напр. ОГЭ)">
             <input class="furl" type="text" id="subprice-${s.id}" placeholder="цена (напр. 2900 ₽)">
@@ -582,6 +587,20 @@ function contactLink(c){ const t = CONTACT_TYPES[c.type]; return (t && c.value) 
 
 let profileContacts = [];
 let profilePrimaryId = null;
+let profileSubjects = [];
+function addProfileSubject(){
+  const input = document.getElementById('newSubject');
+  const value = input.value.trim();
+  if(!value) return;
+  if(profileSubjects.includes(value)){ showToast('Такой предмет уже добавлен'); return; }
+  profileSubjects.push(value);
+  input.value = '';
+  renderSettingsView();
+}
+function removeProfileSubject(value){
+  profileSubjects = profileSubjects.filter(s => s !== value);
+  renderSettingsView();
+}
 function setPrimaryContact(id){
   profilePrimaryId = id;
   renderSettingsView();
@@ -604,6 +623,7 @@ function loadProfileIntoForm(p){
   window.__profileData = p;
   profileContacts = p.contacts || [];
   profilePrimaryId = p.primaryContactId || (profileContacts[0] ? profileContacts[0].id : null);
+  profileSubjects = Array.isArray(p.subjects) ? p.subjects : (p.subject ? [p.subject] : []);
   if(viewMode==='settings') renderSettingsView();
 }
 function contactTypeGridHTML(){
@@ -630,7 +650,7 @@ function contactTypeGridHTML(){
 function saveProfile(){
   const profile = {
     name: document.getElementById('profName').value.trim(),
-    subject: document.getElementById('profSubject').value.trim(),
+    subjects: profileSubjects,
     showSubject: document.getElementById('profShowSubject').checked,
     showContacts: document.getElementById('profShowContacts').checked,
     contacts: profileContacts,
@@ -683,9 +703,20 @@ function renderSettingsView(){
     <div class="matcard" style="margin-top:0.75rem;">
       <div class="filelabel">О себе — видно ученикам</div>
       <input id="profName" type="text" placeholder="ФИО" value="${esc(p.name)}" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-      <input id="profSubject" type="text" placeholder="Предмет" value="${esc(p.subject)}" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem;">Предметы</div>
+      <div id="profSubjects" style="display:flex; flex-wrap:wrap; gap:0.375rem; margin-bottom:0.375rem;">
+        ${(profileSubjects.length===0) ? '<div style="font-size:0.75rem;color:#9BA3AE;">Пока пусто</div>' : profileSubjects.map(s => `
+          <span style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.5rem 0.3rem 0.625rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#EAF0F6; color:#2C4A7C;">
+            ${esc(s)}
+            <button onclick="removeProfileSubject('${esc(s)}')" style="width:1.125rem; height:1.125rem; border-radius:999px; border:none; background:#fff; color:#C0392B; font-size:0.75rem; line-height:1; cursor:pointer;">✕</button>
+          </span>`).join('')}
+      </div>
+      <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem;">
+        <input id="newSubject" type="text" placeholder="например, Информатика" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <button onclick="addProfileSubject()" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer;">+</button>
+      </div>
       <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.75rem; cursor:pointer;">
-        <input id="profShowSubject" type="checkbox" ${p.showSubject?'checked':''}> Показывать предмет ученикам
+        <input id="profShowSubject" type="checkbox" ${p.showSubject?'checked':''}> Показывать предметы ученикам
       </label>
       <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.5rem;">Контакты</div>
       ${contactTypeGridHTML()}
@@ -725,10 +756,27 @@ function togglePickerStudent(id){
   if(i>=0) materialPicker.studentIds.splice(i,1); else materialPicker.studentIds.push(id);
   render();
 }
+function togglePickerGrade(grade){
+  const idsForGrade = data.students.filter(s=>s.grade===grade).map(s=>s.id);
+  const allSelected = idsForGrade.length>0 && idsForGrade.every(id=>materialPicker.studentIds.includes(id));
+  if(allSelected){
+    materialPicker.studentIds = materialPicker.studentIds.filter(id=>!idsForGrade.includes(id));
+  } else {
+    idsForGrade.forEach(id=>{ if(!materialPicker.studentIds.includes(id)) materialPicker.studentIds.push(id); });
+  }
+  render();
+}
 function pickerHTML(picker, prefix){
   const allPicked = picker.visibleToAll;
+  const grades = [...new Set(data.students.map(s=>s.grade).filter(Boolean))];
+  const gradeButtons = grades.map(g => {
+    const idsForGrade = data.students.filter(s=>s.grade===g).map(s=>s.id);
+    const allSelected = !allPicked && idsForGrade.length>0 && idsForGrade.every(id=>picker.studentIds.includes(id));
+    return `<span class="mat-pill ${allSelected?'picked':''}" style="${allPicked?'opacity:.4;pointer-events:none;':''}" onclick="${prefix}TogglePickerGrade('${esc(g)}')">🏷 Все ${esc(g)}</span>`;
+  }).join('');
   return `<div class="mat-picker">
     <span class="mat-pill ${allPicked?'picked':''}" onclick="${prefix}TogglePickerAll()">👥 Все ученики</span>
+    ${gradeButtons}
     ${data.students.map(s=>`<span class="mat-pill ${!allPicked && picker.studentIds.includes(s.id)?'picked':''}" style="${allPicked?'opacity:.4;pointer-events:none;':''}" onclick="${prefix}TogglePickerStudent('${s.id}')">${esc(s.name)}</span>`).join('')}
   </div>`;
 }
@@ -737,6 +785,16 @@ let matMode = 'link';
 let friendMaterials = []; // populated by module script listener
 let matCategory = 'discuss';
 function setMatCategory(cat){ matCategory = cat; render(); }
+let matSubject = null;
+function setMatSubject(sub){ matSubject = sub; render(); }
+let matSubjectFilter = 'all';
+function setMatSubjectFilter(sub){ matSubjectFilter = sub; render(); }
+let matGrade = null;
+function setMatGrade(g){ matGrade = g; render(); }
+let matGradeFilter = 'all';
+function setMatGradeFilter(g){ matGradeFilter = g; render(); }
+let matSourceFilter = 'all'; // 'all' | 'mine' | 'friends' | 'shared'
+function setMatSourceFilter(v){ matSourceFilter = v; render(); }
 let selectedMatFile = null;
 const ALLOWED_EXT = ['pdf','doc','docx','xls','xlsx','csv','ppt','pptx','png','jpg','jpeg','gif','webp','txt','zip','rar','py'];
 const VIDEO_EXT = ['mp4','mov','avi','webm','mkv'];
@@ -783,6 +841,17 @@ async function addMaterial(){
     showToast('Выбери, кому виден материал — «Все ученики» или хотя бы одного конкретного');
     return;
   }
+  const allGrades = [...new Set(data.students.map(s=>s.grade).filter(Boolean))];
+  if(allGrades.length > 1 && !matGrade){
+    showToast('Выбери, для какого класса материал');
+    return;
+  }
+  const grade = allGrades.length > 1 ? matGrade : null;
+  if(profileSubjects.length > 1 && !matSubject){
+    showToast('Выбери, к какому предмету относится материал');
+    return;
+  }
+  const subject = profileSubjects.length > 1 ? matSubject : null;
   const visibleToFriends = document.getElementById('matVisibleToFriends').checked;
 
   if(matMode === 'upload'){
@@ -793,7 +862,7 @@ async function addMaterial(){
       const result = await window.__fbUploadMaterialFile(selectedMatFile);
       const material = {
         id: uid(), name: name || selectedMatFile.name, url: result.url,
-        storage: 'timeweb', fileName: result.fileName, fileOwnerUid: window.__currentUid, category: matCategory,
+        storage: 'timeweb', fileName: result.fileName, fileOwnerUid: window.__currentUid, category: matCategory, subject, grade,
         visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds],
         visibleToFriends
       };
@@ -814,7 +883,7 @@ async function addMaterial(){
   const url = document.getElementById('matUrl').value.trim();
   if(!url){ return; }
   const material = {
-    id: uid(), name, url, storage:'external', fileName:null, fileOwnerUid:null, category: matCategory,
+    id: uid(), name, url, storage:'external', fileName:null, fileOwnerUid:null, category: matCategory, subject, grade,
     visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds],
     visibleToFriends
   };
@@ -898,12 +967,26 @@ function materialCardHTML(m){
 function renderMaterialsView(){
   const list = data.materials || [];
   const addPicker = pickerHTML(materialPicker, 'window.');
-  const discussList = list.filter(m => (m.category||'discuss') === 'discuss');
-  const practiceList = list.filter(m => m.category === 'practice');
+  const allGrades = [...new Set(data.students.map(s=>s.grade).filter(Boolean))];
+  const filteredList = list
+    .filter(m => matSubjectFilter==='all' || m.subject === matSubjectFilter)
+    .filter(m => matGradeFilter==='all' || m.grade === matGradeFilter);
+  const discussList = filteredList.filter(m => (m.category||'discuss') === 'discuss');
+  const practiceList = filteredList.filter(m => m.category === 'practice');
   const groupHtml = (title, icon, items) => `
     <div class="filelabel" style="margin-top:0.75rem;">${icon} ${title}</div>
     ${items.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0;">Пока пусто</div>' : items.map(materialCardHTML).join('')}
   `;
+  const subjectFilterHtml = profileSubjects.length > 1 ? `
+    <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+      <span class="mat-pill ${matSubjectFilter==='all'?'picked':''}" onclick="setMatSubjectFilter('all')">Все предметы</span>
+      ${profileSubjects.map(sub=>`<span class="mat-pill ${matSubjectFilter===sub?'picked':''}" onclick="setMatSubjectFilter('${esc(sub)}')">${esc(sub)}</span>`).join('')}
+    </div>` : '';
+  const gradeFilterHtml = allGrades.length > 1 ? `
+    <div style="display:flex; gap:0.375rem; margin-bottom:0.75rem; flex-wrap:wrap;">
+      <span class="mat-pill ${matGradeFilter==='all'?'picked':''}" onclick="setMatGradeFilter('all')">Все классы</span>
+      ${allGrades.map(g=>`<span class="mat-pill ${matGradeFilter===g?'picked':''}" onclick="setMatGradeFilter('${esc(g)}')">${esc(g)}</span>`).join('')}
+    </div>` : '';
 
   return `
     <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
@@ -927,6 +1010,18 @@ function renderMaterialsView(){
       ` : `
         <input id="matUrl" type="text" placeholder="ссылка на файл" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
       `}
+      ${allGrades.length > 1 ? `
+        <div class="filelabel" style="margin-top:0.375rem;">Класс</div>
+        <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem; flex-wrap:wrap;">
+          ${allGrades.map(g=>`<button onclick="setMatGrade('${esc(g)}')" class="mat-pill ${matGrade===g?'picked':''}" style="flex:1; justify-content:center;">${esc(g)}</button>`).join('')}
+        </div>
+      ` : ''}
+      ${profileSubjects.length > 1 ? `
+        <div class="filelabel" style="margin-top:0.375rem;">Предмет</div>
+        <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem; flex-wrap:wrap;">
+          ${profileSubjects.map(sub=>`<button onclick="setMatSubject('${esc(sub)}')" class="mat-pill ${matSubject===sub?'picked':''}" style="flex:1; justify-content:center;">${esc(sub)}</button>`).join('')}
+        </div>
+      ` : ''}
       <div class="filelabel" style="margin-top:0.375rem;">Категория</div>
       <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
         <button onclick="setMatCategory('discuss')" class="mat-pill ${matCategory==='discuss'?'picked':''}" style="flex:1; justify-content:center;">📖 Разбираем</button>
@@ -939,11 +1034,29 @@ function renderMaterialsView(){
       </label>
       <button class="btn btn-done" style="width:100%; margin-top:0.375rem;" onclick="addMaterial()">+ Добавить</button>
     </div>
+    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+      <span style="font-size:0.75rem; color:#5A6472; white-space:nowrap;">Показать:</span>
+      <select onchange="setMatSourceFilter(this.value)" style="flex:1; font-size:0.8125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <option value="all" ${matSourceFilter==='all'?'selected':''}>Все</option>
+        <option value="mine" ${matSourceFilter==='mine'?'selected':''}>Личное</option>
+        <option value="friends" ${matSourceFilter==='friends'?'selected':''}>Друзья</option>
+        <option value="shared" ${matSourceFilter==='shared'?'selected':''}>Общее</option>
+      </select>
+    </div>
+    ${gradeFilterHtml}
+    ${subjectFilterHtml}
+    ${(matSourceFilter==='all' || matSourceFilter==='mine') ? `
     <div class="filelabel" style="margin-top:1rem;">Личные</div>
     ${groupHtml('Разбираем', '📖', discussList)}
     ${groupHtml('Тренируемся', '🏋️', practiceList)}
+    ` : ''}
+    ${(matSourceFilter==='all' || matSourceFilter==='friends') ? `
     <div class="filelabel" style="margin-top:1rem;">От друзей</div>
-    ${(friendMaterials||[]).length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пока никто ничем не поделился</div>' : friendMaterials.map(m => `
+    ${(() => {
+      const fm = (friendMaterials||[])
+        .filter(m => matSubjectFilter==='all' || m.subject===matSubjectFilter)
+        .filter(m => matGradeFilter==='all' || m.grade===matGradeFilter);
+      return fm.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пока никто ничем не поделился</div>' : fm.map(m => `
       <div class="matcard">
         <div style="display:flex; align-items:center; gap:0.5rem;">
           <span>${materialIcon(m.url)}</span>
@@ -951,8 +1064,11 @@ function renderMaterialsView(){
         </div>
         <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">от ${esc(m.__friendName||'коллеги')}</div>
         <button class="btn btn-done" style="width:100%; margin-top:0.5rem;" onclick="addFriendMaterialToMine('${m.__friendUid}','${m.id}')">+ Добавить себе</button>
-      </div>`).join('')}
+      </div>`).join(''); })()}
+    ` : ''}
+    ${(matSourceFilter==='all' || matSourceFilter==='shared') ? `
     <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin:0.75rem 0;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>
+    ` : ''}
   `;
 }
 
@@ -987,6 +1103,7 @@ function render(){
 // expose picker toggles for the inline onclick handlers in pickerHTML()
 window.TogglePickerAll = togglePickerAll;
 window.TogglePickerStudent = togglePickerStudent;
+window.TogglePickerGrade = togglePickerGrade;
 
 render();
 
