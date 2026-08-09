@@ -56,6 +56,29 @@
     }
   };
 
+  window.__fbSendSelfTestPush = async function(){
+    if(!currentUid){ showToast('Не залогинена'); return; }
+    showToast('Отправляю тестовое уведомление…', 'info', 6000);
+    try{
+      const token = await auth.currentUser.getIdToken();
+      const resp = await fetch('https://ct030786.tw1.ru/api/send-push.php', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'self_test', targetTutorUid: currentUid }),
+      });
+      const json = await resp.json().catch(() => ({}));
+      if(resp.ok && json.success){
+        showToast('Сервер принял и отправил! Если уведомление не пришло — дело в браузере/телефоне, не в коде.', 'success', 8000);
+      } else if(resp.ok && json.success === false){
+        showToast('Сервер ответил: ' + (json.note || 'токен не найден — сначала нажми «Включить» выше'), 'error', 10000);
+      } else {
+        showToast('Ошибка сервера: ' + (json.error || 'неизвестно') + (json.debug ? (' | ' + json.debug) : ''), 'error', 15000);
+      }
+    }catch(e){
+      showToast('Не получилось достучаться до сервера: ' + (e.message||'ошибка сети'), 'error', 10000);
+    }
+  };
+
   let currentUid = null;
   let unsubStudents = null;
   let unsubMeta = null;

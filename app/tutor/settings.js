@@ -102,7 +102,8 @@ function renderPushSettingsInner(){
         <div class="filelabel" style="margin:0;">Уведомления</div>
         <span style="font-size:0.78125rem; color:#2E7D4F;">✓ Включены</span>
       </div>
-      <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Новый ученик, коллега поделился материалом и другие события.</div>`;
+      <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Новый ученик, коллега поделился материалом и другие события.</div>
+      <a href="#" onclick="window.__fbSendSelfTestPush();return false;" style="font-size:0.71875rem; color:#5A6472; display:inline-block; margin-top:0.375rem;">Отправить тестовое уведомление самой себе</a>`;
   }
   if(status === 'denied'){
     return `<div class="filelabel" style="margin:0;">Уведомления</div>
