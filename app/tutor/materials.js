@@ -9,8 +9,6 @@ let matSubjectFilter = 'all';
 function setMatSubjectFilter(sub){ matSubjectFilter = sub; render(); }
 let matGradeFilter = 'all';
 function setMatGradeFilter(g){ matGradeFilter = g; render(); }
-let showArchive = false;
-function toggleShowArchive(){ showArchive = !showArchive; render(); }
 let friendMaterials = []; // populated by module script listener
 
 const TYPE_OPTIONS = ['ОГЭ','ЕГЭ','Методичка','Задание','ДЗ'];
@@ -70,19 +68,19 @@ function closeAddForm(){ addFormOpen = false; editingMaterialId = null; render()
 function toggleMatGrade(g){
   const i = matGrades.indexOf(g);
   if(i>=0) matGrades.splice(i,1); else matGrades.push(g);
-  render();
+  refreshSheet();
 }
-function setMatSubject(sub){ matSubject = sub; render(); }
-function setMatCategory(cat){ matCategory = cat; render(); }
+function setMatSubject(sub){ matSubject = sub; refreshSheet(); }
+function setMatCategory(cat){ matCategory = cat; refreshSheet(); }
 function toggleMatType(t){
   const i = matTypes.indexOf(t);
   if(i>=0) matTypes.splice(i,1); else matTypes.push(t);
-  render();
+  refreshSheet();
 }
 function setMatMode(mode){
   matMode = mode;
   selectedMatFile = null;
-  render();
+  refreshSheet();
 }
 
 function onMatFileSelected(){
@@ -260,21 +258,23 @@ function accessLabel(m){
 function togglePickerAll(){
   materialPicker.visibleToAll = !materialPicker.visibleToAll;
   if(materialPicker.visibleToAll) materialPicker.onlyMe = false;
-  render();
+  refreshSheet();
 }
 function togglePickerOnlyMe(){
   materialPicker.onlyMe = !materialPicker.onlyMe;
   if(materialPicker.onlyMe){ materialPicker.visibleToAll = false; materialPicker.studentIds = []; }
-  render();
+  refreshSheet();
 }
 function togglePickerStudent(id){
-  if(materialPicker.onlyMe) return;
+  materialPicker.onlyMe = false;
+  materialPicker.visibleToAll = false;
   const i = materialPicker.studentIds.indexOf(id);
   if(i>=0) materialPicker.studentIds.splice(i,1); else materialPicker.studentIds.push(id);
-  render();
+  refreshSheet();
 }
 function togglePickerGrade(grade){
-  if(materialPicker.onlyMe) return;
+  materialPicker.onlyMe = false;
+  materialPicker.visibleToAll = false;
   const idsForGrade = data.students.filter(s=>s.grade===grade).map(s=>s.id);
   const allSelected = idsForGrade.length>0 && idsForGrade.every(id=>materialPicker.studentIds.includes(id));
   if(allSelected){
@@ -282,12 +282,11 @@ function togglePickerGrade(grade){
   } else {
     idsForGrade.forEach(id=>{ if(!materialPicker.studentIds.includes(id)) materialPicker.studentIds.push(id); });
   }
-  render();
+  refreshSheet();
 }
 function pickerHTML(picker, prefix){
   const allPicked = picker.visibleToAll;
   const onlyMe = !!picker.onlyMe;
-  const disabled = allPicked || onlyMe;
   const grades = [...new Set(data.students.map(s=>s.grade).filter(Boolean))];
   return `<div class="mat-picker-group">
     <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem;">
@@ -299,13 +298,13 @@ function pickerHTML(picker, prefix){
     <div class="mat-picker" style="margin-bottom:0.5rem;">
       ${grades.map(g => {
         const idsForGrade = data.students.filter(s=>s.grade===g).map(s=>s.id);
-        const allSelected = !disabled && idsForGrade.length>0 && idsForGrade.every(id=>picker.studentIds.includes(id));
-        return `<span class="mat-pill ${allSelected?'picked':''}" style="${disabled?'opacity:.4;pointer-events:none;':''}" onclick="${prefix}TogglePickerGrade('${esc(g)}')">${esc(g)}</span>`;
+        const allSelected = !allPicked && !onlyMe && idsForGrade.length>0 && idsForGrade.every(id=>picker.studentIds.includes(id));
+        return `<span class="mat-pill ${allSelected?'picked':''}" onclick="${prefix}TogglePickerGrade('${esc(g)}')">${esc(g)}</span>`;
       }).join('')}
     </div>` : ''}
     <div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">По именам</div>
     <div class="mat-picker">
-      ${data.students.map(s=>`<span class="mat-pill ${!disabled && picker.studentIds.includes(s.id)?'picked':''}" style="${disabled?'opacity:.4;pointer-events:none;':''}" onclick="${prefix}TogglePickerStudent('${s.id}')">${esc(s.name)}</span>`).join('')}
+      ${data.students.map(s=>`<span class="mat-pill ${!allPicked && !onlyMe && picker.studentIds.includes(s.id)?'picked':''}" onclick="${prefix}TogglePickerStudent('${s.id}')">${esc(s.name)}</span>`).join('')}
     </div>
   </div>`;
 }
@@ -345,7 +344,7 @@ function materialTileHTML(m){
       <button class="iconbtn" onclick="event.stopPropagation(); requestDeleteMaterial('${m.id}')" style="position:absolute; top:0.25rem; right:0.25rem; width:1.375rem; height:1.375rem; font-size:0.6875rem; border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
       <a href="${esc(m.url)}" target="_blank" style="text-decoration:none; color:inherit; display:flex; flex-direction:column; align-items:center; gap:0.375rem;">
         <span style="font-size:1.75rem;">${materialIcon(m.url)}</span>
-        <span style="font-size:0.71875rem; color:#3A4250; text-align:center; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.2;">${esc(m.name||m.url)}</span>
+        <span style="font-size:0.71875rem; color:#3A4250; text-align:center; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.2; word-break:break-word; overflow-wrap:anywhere; width:100%;">${esc(m.name||m.url)}</span>
       </a>
       <button style="width:100%; margin-top:0.375rem; font-size:0.6875rem; color:#5A6472; background:none; border:none; padding:0.125rem 0; cursor:pointer; text-decoration:underline;" onclick="openEditForm('${m.id}')">✏️</button>
     </div>`;
@@ -363,19 +362,11 @@ function viewModeToggleHTML(){
 }
 
 // ---- add/edit bottom sheet ----
-function renderMaterialFormSheet(){
-  if(!addFormOpen) return '';
+function renderMaterialFormSheetInner(){
   const allGrades = [...new Set(data.students.map(s=>s.grade).filter(Boolean))];
   const isEdit = !!editingMaterialId;
   const editingUpload = isEdit && (data.materials||[]).find(x=>x.id===editingMaterialId)?.storage === 'timeweb';
   return `
-  <div class="mat-sheet-backdrop" onclick="closeAddForm()"></div>
-  <div class="mat-sheet">
-    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
-      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">${isEdit?'✏️ Редактировать материал':'➕ Новый материал'}</div>
-      <button class="hamburger" onclick="closeAddForm()">✕</button>
-    </div>
-    <div style="padding:0 1rem 1.5rem;">
       <input id="matNameInput" type="text" placeholder="название" value="${esc(matNameValue)}" oninput="matNameValue=this.value" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
       ${!isEdit ? `
         <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
@@ -423,7 +414,26 @@ function renderMaterialFormSheet(){
         <input type="checkbox" id="matVisibleToFriends" ${matVisibleToFriendsChecked?'checked':''} onchange="matVisibleToFriendsChecked=this.checked"> Показывать друзьям-репетиторам
       </label>
       <button class="btn btn-done" style="width:100%; margin-top:0.375rem;" onclick="submitMaterialForm()">${isEdit?'✓ Сохранить':'+ Добавить'}</button>
+  `;
+}
+function refreshSheet(){
+  if(!addFormOpen) return;
+  const el = document.getElementById('matSheetInner');
+  if(el) el.innerHTML = renderMaterialFormSheetInner();
+  const titleEl = document.getElementById('matSheetTitle');
+  if(titleEl) titleEl.textContent = editingMaterialId ? '✏️ Редактировать материал' : '➕ Новый материал';
+}
+function renderMaterialFormSheet(){
+  if(!addFormOpen) return '';
+  const isEdit = !!editingMaterialId;
+  return `
+  <div class="mat-sheet-backdrop" onclick="closeAddForm()"></div>
+  <div class="mat-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
+      <div id="matSheetTitle" style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">${isEdit?'✏️ Редактировать материал':'➕ Новый материал'}</div>
+      <button class="hamburger" onclick="closeAddForm()">✕</button>
     </div>
+    <div id="matSheetInner" style="padding:0 1rem 1.5rem;">${renderMaterialFormSheetInner()}</div>
   </div>`;
 }
 
@@ -464,17 +474,32 @@ function renderMaterialsView(){
     {id:'friends', label:'Друзья'},
     {id:'shared', label:'Открытая библиотека'},
     {id:'search', label:'🔍 Поиск'},
+    {id:'archive', label:`🗄 Архив${archivedList.length?` (${archivedList.length})`:''}`},
   ];
   const tabsHtml = `<div style="display:flex; gap:0.375rem; margin-bottom:0.75rem; align-items:center;">
     <div style="display:flex; gap:0.375rem; overflow-x:auto; flex:1;">
       ${tabs.map(t=>`<button onclick="setMatTab('${t.id}')" class="mat-pill ${matTab===t.id?'picked':''}" style="white-space:nowrap; flex-shrink:0;">${t.label}</button>`).join('')}
     </div>
-    ${(matTab!=='shared' && matTab!=='friends') ? viewModeToggleHTML() : ''}
+    ${(matTab==='mine' || matTab==='search') ? viewModeToggleHTML() : ''}
   </div>`;
 
   let bodyHtml;
   if(matTab === 'shared'){
     bodyHtml = `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin:0.75rem 0;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>`;
+  } else if(matTab === 'archive'){
+    bodyHtml = `
+      ${archivedList.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пусто</div>' : archivedList.map(m => `
+      <div class="matcard">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span>${materialIcon(m.url)}</span>
+          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
+        </div>
+        <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
+          <button class="btn btn-done" style="flex:1;" onclick="restoreMaterial('${m.id}')">↩️ Восстановить</button>
+          <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="reallyDeleteMaterial('${m.id}')">Удалить навсегда</button>
+        </div>
+      </div>`).join('')}
+    `;
   } else if(matTab === 'friends'){
     bodyHtml = `
       <button class="btn btn-done" style="width:100%; margin-bottom:0.75rem;" onclick="openAddForm()">+ Добавить материал</button>
@@ -507,26 +532,8 @@ function renderMaterialsView(){
   }
 
   return `
-    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
-      <button class="hamburger" onclick="showStudentsView()" title="Назад к ученикам">←</button>
-      <div style="flex:1;"></div>
-      <button onclick="toggleShowArchive()" class="mat-pill ${showArchive?'picked':''}" style="margin-left:auto; flex-shrink:0;">🗄${archivedList.length?` ${archivedList.length}`:''}</button>
-    </div>
     ${tabsHtml}
-    ${showArchive ? `
-    <div class="filelabel">Архив</div>
-    ${archivedList.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пусто</div>' : archivedList.map(m => `
-      <div class="matcard">
-        <div style="display:flex; align-items:center; gap:0.5rem;">
-          <span>${materialIcon(m.url)}</span>
-          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
-        </div>
-        <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
-          <button class="btn btn-done" style="flex:1;" onclick="restoreMaterial('${m.id}')">↩️ Восстановить</button>
-          <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="reallyDeleteMaterial('${m.id}')">Удалить навсегда</button>
-        </div>
-      </div>`).join('')}
-    ` : bodyHtml}
+    ${bodyHtml}
     ${renderMaterialFormSheet()}
   `;
 }
@@ -534,7 +541,6 @@ function renderMaterialsView(){
 function showMaterialsView(studentId){
   viewMode = 'materials';
   matTab = 'mine';
-  showArchive = false;
   if(studentId){
     editingMaterialId = null;
     matMode = 'link';

@@ -242,3 +242,45 @@ function cardHTML(s){
     </div>`;
 }
 
+function renderOverviewView(){
+  const students = data.students || [];
+  const online = students.filter(s=>s.format!=='Очно').length;
+  const inperson = students.filter(s=>s.format==='Очно').length;
+  const noAccount = students.filter(s=>!s.hasAccount);
+  const grades = {};
+  students.forEach(s=>{ if(s.grade) grades[s.grade] = (grades[s.grade]||0)+1; });
+  const gradesLine = Object.entries(grades).map(([g,c])=>`${g} (${c})`).join(', ');
+  const subjectsLine = profileSubjects.length ? profileSubjects.join(' · ') : '';
+
+  return `
+    <div class="matcard">
+      <div class="filelabel">Сводка</div>
+      <div style="font-size:0.9375rem; font-weight:600; margin-bottom:0.25rem;">👥 ${students.length} учеников</div>
+      <div style="font-size:0.8125rem; color:#5A6472;">💻 ${online} онлайн · 🤝 ${inperson} очно</div>
+      ${gradesLine ? `<div style="font-size:0.8125rem; color:#5A6472; margin-top:0.25rem;">🏷 По классам: ${esc(gradesLine)}</div>` : ''}
+      ${subjectsLine ? `<div style="font-size:0.8125rem; color:#5A6472; margin-top:0.25rem;">📖 Предметы: ${esc(subjectsLine)}</div>` : ''}
+    </div>
+
+    ${noAccount.length ? `
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">⚠️ Требует внимания</div>
+      <div style="font-size:0.8125rem; color:#5A6472; margin-bottom:0.5rem;">Ещё не завели свой аккаунт — не забудь прислать код:</div>
+      ${noAccount.map(s=>`
+        <div class="filerow">
+          <span>🔑</span>
+          <span style="flex:1; font-size:0.8125rem;">${esc(s.name)}</span>
+          <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; cursor:pointer; text-decoration:underline;" onclick="selectStudentFromDrawer('${s.id}')">открыть</button>
+        </div>`).join('')}
+    </div>` : ''}
+
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">Быстрые ссылки</div>
+      <div style="display:flex; flex-direction:column; gap:0.5rem;">
+        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showStudentsView()">👥 Все ученики</button>
+        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showMaterialsView()">📚 Материалы</button>
+        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showFriendsView()">🤝 Друзья</button>
+        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showSettingsView()">⚙️ Настройки</button>
+      </div>
+    </div>
+  `;
+}

@@ -1,10 +1,11 @@
-let viewMode = 'students'; // 'students' | 'materials' | 'friends' | 'settings'
+let viewMode = 'overview'; // 'overview' | 'students' | 'materials' | 'friends' | 'settings'
 let focusedStudentId = null;
 let materialPicker = { visibleToAll: false, onlyMe: false, studentIds: [] };
 let editingAccessFor = null;
 function openDrawer(){ document.getElementById('drawer').classList.add('open'); document.getElementById('backdrop').classList.add('open'); }
 function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('backdrop').classList.remove('open'); }
 function selectStudentFromDrawer(id){ focusedStudentId = id; viewMode = 'students'; closeDrawer(); render(); }
+function showOverviewView(){ viewMode = 'overview'; closeDrawer(); render(); }
 function showStudentsView(){ viewMode = 'students'; focusedStudentId = null; closeDrawer(); render(); }
 let drawerOpenSection = null; // 'online' | 'inperson' | null
 function toggleDrawerSection(section){
@@ -32,6 +33,7 @@ function renderDrawerLists(){
 }
 
 const PAGE_HEADERS = {
+  overview: { title: '🏠 Обзор', sub: 'Коротко о твоих учениках и что не забыть сделать.' },
   students: { title: '📘 Перед уроком', sub: 'Ссылки, доски и материалы — по каждому ученику. Синхронизируется на всех устройствах.' },
   materials: { title: '📚 Материалы', sub: 'Файлы и ссылки для твоих уроков — свои, от друзей и общие.' },
   friends: { title: '👥 Друзья', sub: 'Коллеги-репетиторы, с которыми вы делитесь материалами.' },
@@ -51,6 +53,10 @@ function render(){
   updatePageHeader();
   const wrap = document.getElementById('mainArea');
 
+  if(viewMode === 'overview'){
+    wrap.innerHTML = renderOverviewView();
+    return;
+  }
   if(viewMode === 'materials'){
     wrap.innerHTML = renderMaterialsView();
     return;

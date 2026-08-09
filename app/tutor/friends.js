@@ -9,9 +9,6 @@ function showFriendsView(){
 }
 function renderFriendsView(){
   return `
-    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
-      <button class="hamburger" onclick="showStudentsView()" title="Назад к ученикам">←</button>
-    </div>
     <div class="matcard">
       <div class="filelabel">Твой код</div>
       <div style="display:flex; align-items:center; gap:0.5rem;">

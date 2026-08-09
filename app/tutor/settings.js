@@ -86,6 +86,11 @@ function saveProfile(){
   showToast('Профиль сохранён', 'success', 4000);
 }
 
+let dataPanelOpen = false;
+function toggleDataPanel(){
+  dataPanelOpen = !dataPanelOpen;
+  renderSettingsView();
+}
 function showSettingsView(){
   viewMode = 'settings';
   closeDrawer();
@@ -96,31 +101,7 @@ function renderSettingsView(){
   if(!wrap) return;
   const p = window.__profileData || {};
   wrap.innerHTML = `
-    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
-      <button class="hamburger" onclick="showStudentsView()" title="Назад к ученикам">←</button>
-    </div>
-
     <div class="matcard">
-      <div class="filelabel">Данные</div>
-      <button class="drawer-item" style="padding-left:0;" onclick="syncBaseLinks()">🔄 Обновить базовые ссылки из файла</button>
-      <button class="drawer-item" style="padding-left:0;" onclick="downloadBackup()">💾 Скачать резервную копию</button>
-      <button class="drawer-item" style="padding-left:0;" onclick="document.getElementById('restoreFile').click()">📂 Загрузить из копии</button>
-    </div>
-
-    <div class="matcard" style="margin-top:0.75rem;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
-        <div class="filelabel" style="margin:0;">Пароль</div>
-        <a href="#" onclick="toggleAccountPanel();return false;" style="font-size:0.78125rem; color:#5A6472;">Сменить</a>
-      </div>
-      <div id="accountPanel" style="display:none;">
-        <div style="font-size:0.75rem; color:#5A6472; margin-bottom:0.5rem;">Чтобы сменить пароль, подтверди текущим</div>
-        <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-        <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-        <button onclick="changePassword()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сменить пароль</button>
-      </div>
-    </div>
-
-    <div class="matcard" style="margin-top:0.75rem;">
       <div class="filelabel">Моя тема</div>
       ${themePickerHTML(data.theme || 'classic', 'setTutorTheme')}
     </div>
@@ -149,6 +130,33 @@ function renderSettingsView(){
         <input id="profShowContacts" type="checkbox" ${p.showContacts?'checked':''}> Показывать контакты ученикам
       </label>
       <button onclick="saveProfile()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сохранить профиль</button>
+    </div>
+
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="filelabel" style="margin:0;">Пароль</div>
+        <a href="#" onclick="toggleAccountPanel();return false;" style="font-size:0.78125rem; color:#5A6472;">Сменить</a>
+      </div>
+      <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Смена пароля для входа в этот кабинет.</div>
+      <div id="accountPanel" style="display:none; margin-top:0.5rem;">
+        <div style="font-size:0.75rem; color:#5A6472; margin-bottom:0.5rem;">Чтобы сменить пароль, подтверди текущим</div>
+        <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+        <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+        <button onclick="changePassword()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сменить пароль</button>
+      </div>
+    </div>
+
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="filelabel" style="margin:0;">Данные</div>
+        <a href="#" onclick="toggleDataPanel();return false;" style="font-size:0.78125rem; color:#5A6472;">${dataPanelOpen?'Скрыть':'Показать'}</a>
+      </div>
+      <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Резервная копия и восстановление — на случай смены логина или переноса на новое устройство.</div>
+      <div id="dataPanel" style="display:${dataPanelOpen?'block':'none'}; margin-top:0.625rem;">
+        <button class="drawer-item" style="padding-left:0;" onclick="syncBaseLinks()">🔄 Обновить базовые ссылки из файла</button>
+        <button class="drawer-item" style="padding-left:0;" onclick="downloadBackup()">💾 Скачать резервную копию</button>
+        <button class="drawer-item" style="padding-left:0;" onclick="document.getElementById('restoreFile').click()">📂 Загрузить из копии</button>
+      </div>
     </div>
   `;
 }
