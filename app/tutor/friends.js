@@ -11,7 +11,6 @@ function renderFriendsView(){
   return `
     <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
       <button class="hamburger" onclick="showStudentsView()" title="Назад к ученикам">←</button>
-      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">👥 Друзья</div>
     </div>
     <div class="matcard">
       <div class="filelabel">Твой код</div>

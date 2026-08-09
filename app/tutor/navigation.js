@@ -1,6 +1,6 @@
 let viewMode = 'students'; // 'students' | 'materials' | 'friends' | 'settings'
 let focusedStudentId = null;
-let materialPicker = { visibleToAll: false, studentIds: [] };
+let materialPicker = { visibleToAll: false, onlyMe: false, studentIds: [] };
 let editingAccessFor = null;
 function openDrawer(){ document.getElementById('drawer').classList.add('open'); document.getElementById('backdrop').classList.add('open'); }
 function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('backdrop').classList.remove('open'); }
@@ -31,9 +31,24 @@ function renderDrawerLists(){
   if(inpersonArrow) inpersonArrow.textContent = drawerOpenSection === 'inperson' ? '▴' : '▾';
 }
 
+const PAGE_HEADERS = {
+  students: { title: '📘 Перед уроком', sub: 'Ссылки, доски и материалы — по каждому ученику. Синхронизируется на всех устройствах.' },
+  materials: { title: '📚 Материалы', sub: 'Файлы и ссылки для твоих уроков — свои, от друзей и общие.' },
+  friends: { title: '👥 Друзья', sub: 'Коллеги-репетиторы, с которыми вы делитесь материалами.' },
+  settings: { title: '⚙️ Настройки', sub: 'Профиль, тема, пароль и резервные копии.' },
+};
+function updatePageHeader(){
+  const h = PAGE_HEADERS[viewMode] || PAGE_HEADERS.students;
+  const titleEl = document.getElementById('pageTitle');
+  const subEl = document.getElementById('pageSub');
+  if(titleEl) titleEl.textContent = h.title;
+  if(subEl) subEl.textContent = h.sub;
+}
+
 function render(){
   renderDrawerLists();
   applyTutorTheme();
+  updatePageHeader();
   const wrap = document.getElementById('mainArea');
 
   if(viewMode === 'materials'){
