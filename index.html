@@ -81,7 +81,8 @@
       }
       const { tutorUid, studentId } = linkSnap.data();
       tx.update(linkRef, { claimed: true, claimedBy: uid });
-      tx.set(doc(db, 'studentAccess', uid), { tutorUid, studentId });
+      tx.set(doc(db, 'studentAccess', uid), { isStudent: true }, { merge: true });
+      tx.set(doc(db, 'studentAccess', uid, 'links', tutorUid), { studentId });
     });
   }
 

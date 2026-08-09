@@ -29,6 +29,7 @@
 
   <hr class="drawer-hr">
   <button class="drawer-item" onclick="showMaterialsView()">📚 Материалы</button>
+  <button class="drawer-item" onclick="showFriendsView()">👥 Друзья</button>
   <button class="drawer-item" style="color:#B7BEC7; cursor:default;" onclick="showToast('Календарь занятий — в работе, скоро будет.', 'info', 4000)">📅 Календарь <span style="margin-left:auto; font-size:0.6875rem; background:#F1F3F5; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></button>
 
   <hr class="drawer-hr">
@@ -244,10 +245,20 @@ function deleteStudent(id){
   data.students = data.students.filter(x=>x.id!==id);
   save();
 }
+function getInitials(fullName){
+  return (fullName||'').trim().split(/\s+/).filter(Boolean).map(w=>w[0]).join('').toUpperCase();
+}
 async function generateInviteCode(studentId){
+  const tutorName = window.__profileData && window.__profileData.name;
+  if(!tutorName){
+    showToast('Сначала впиши своё ФИО в Настройках → «О себе» — без него код не собрать');
+    return;
+  }
+  const initials = getInitials(tutorName);
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for(let i=0;i<5;i++) code += chars[Math.floor(Math.random()*chars.length)];
+  let rand = '';
+  for(let i=0;i<5;i++) rand += chars[Math.floor(Math.random()*chars.length)];
+  const code = `У-${initials}-${rand}`;
   if(!window.__fbCreateLink){ showToast('Нет связи с базой, попробуй позже'); return; }
   const ok = await window.__fbCreateLink(code, studentId);
   if(ok){
@@ -467,10 +478,12 @@ function cardHTML(s){
     </div>`;
 }
 
-let viewMode = 'students'; // 'students' | 'materials'
+let viewMode = 'students'; // 'students' | 'materials' | 'friends' | 'settings'
 let focusedStudentId = null;
 let materialPicker = { visibleToAll: false, studentIds: [] };
 let editingAccessFor = null;
+let friendsList = []; // [{uid, name}]
+let friendCode = null;
 
 function openDrawer(){ document.getElementById('drawer').classList.add('open'); document.getElementById('backdrop').classList.add('open'); }
 function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('backdrop').classList.remove('open'); }
@@ -482,6 +495,60 @@ function showMaterialsView(studentId){
   materialPicker = studentId ? { visibleToAll:false, studentIds:[studentId] } : { visibleToAll:false, studentIds:[] };
   closeDrawer();
   render();
+}
+function showFriendsView(){
+  viewMode = 'friends';
+  closeDrawer();
+  if(window.__fbEnsureFriendCode) window.__fbEnsureFriendCode();
+  render();
+}
+function renderFriendsView(){
+  return `
+    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:1rem;">
+      <button class="hamburger" onclick="showStudentsView()" title="Назад к ученикам">←</button>
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">👥 Друзья</div>
+    </div>
+    <div class="matcard">
+      <div class="filelabel">Твой код</div>
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <div style="flex:1; font-family:'IBM Plex Mono',monospace; font-size:1.0625rem; font-weight:700; background:#F1F3F5; border-radius:0.5rem; padding:0.5rem 0.75rem;">${friendCode ? esc(friendCode) : '…'}</div>
+        <button class="iconbtn" onclick="copyText('${esc(friendCode||'')}', this)">⧉</button>
+      </div>
+      <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.375rem;">Пришли этот код коллеге — он вводит его у себя, и вы становитесь друзьями</div>
+    </div>
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">Добавить друга по коду</div>
+      <div style="display:flex; gap:0.375rem;">
+        <input id="friendCodeInput" type="text" placeholder="код коллеги" style="flex:1; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; text-transform:uppercase;">
+        <button class="btn btn-done" style="flex:0 0 auto; padding:0 1rem;" onclick="addFriendByCode()">Добавить</button>
+      </div>
+    </div>
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">Твои друзья</div>
+      ${friendsList.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;">Пока никого</div>' : friendsList.map(f => `
+        <div class="filerow">
+          <span>👤</span>
+          <span style="flex:1; font-size:0.8125rem;">${esc(f.name || 'Коллега')}</span>
+          <button class="iconbtn" onclick="removeFriend('${f.uid}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+        </div>`).join('')}
+    </div>
+  `;
+}
+async function addFriendByCode(){
+  const input = document.getElementById('friendCodeInput');
+  const code = input.value.trim().toUpperCase();
+  if(!code){ showToast('Впиши код коллеги'); return; }
+  if(!window.__fbAddFriend){ showToast('Сейчас недоступно, попробуй позже'); return; }
+  try{
+    const name = await window.__fbAddFriend(code);
+    showToast(name ? `Теперь вы с ${name} видите общие материалы друг друга` : 'Готово! Вы теперь друзья', 'success', 5000);
+    input.value = '';
+  }catch(e){
+    showToast(e.message || 'Не получилось добавить — проверь код');
+  }
+}
+function removeFriend(uid){
+  if(window.__fbRemoveFriend) window.__fbRemoveFriend(uid);
 }
 
 let drawerOpenSection = null; // 'online' | 'inperson' | null
@@ -667,6 +734,7 @@ function pickerHTML(picker, prefix){
 }
 
 let matMode = 'link';
+let friendMaterials = []; // populated by module script listener
 let matCategory = 'discuss';
 function setMatCategory(cat){ matCategory = cat; render(); }
 let selectedMatFile = null;
@@ -715,6 +783,7 @@ async function addMaterial(){
     showToast('Выбери, кому виден материал — «Все ученики» или хотя бы одного конкретного');
     return;
   }
+  const visibleToFriends = document.getElementById('matVisibleToFriends').checked;
 
   if(matMode === 'upload'){
     if(!selectedMatFile){ showToast('Выбери файл для загрузки'); return; }
@@ -725,7 +794,8 @@ async function addMaterial(){
       const material = {
         id: uid(), name: name || selectedMatFile.name, url: result.url,
         storage: 'timeweb', fileName: result.fileName, fileOwnerUid: window.__currentUid, category: matCategory,
-        visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds]
+        visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds],
+        visibleToFriends
       };
       data.materials = [...(data.materials||[]), material];
       if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(material);
@@ -745,7 +815,8 @@ async function addMaterial(){
   if(!url){ return; }
   const material = {
     id: uid(), name, url, storage:'external', fileName:null, fileOwnerUid:null, category: matCategory,
-    visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds]
+    visibleToAll: materialPicker.visibleToAll, studentIds: materialPicker.visibleToAll ? [] : [...materialPicker.studentIds],
+    visibleToFriends
   };
   data.materials = [...(data.materials||[]), material];
   if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(material);
@@ -761,10 +832,20 @@ async function deleteMaterial(id){
   if(window.__fbDeleteMaterial) window.__fbDeleteMaterial(id);
   try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
   render();
-  // физический файл на Timeweb трогаем только если ЭТОТ репетитор — владелец файла
-  // (пока нет обмена материалами между репетиторами, это всегда так)
+  // физический файл на Timeweb трогаем только если ЭТОТ репетитор — владелец файла.
+  // Для скопированных у друга материалов fileOwnerUid принадлежит другу — тут ничего не удаляем,
+  // мы только убираем свою запись, оригинал у владельца не трогаем.
   if(m && m.storage === 'timeweb' && m.fileOwnerUid === window.__currentUid && window.__fbDeleteMaterialFile){
     window.__fbDeleteMaterialFile(m.fileName).catch(() => {});
+  }
+}
+async function addFriendMaterialToMine(friendUid, materialId){
+  if(!window.__fbCopyFriendMaterial){ showToast('Сейчас недоступно, попробуй позже'); return; }
+  try{
+    await window.__fbCopyFriendMaterial(friendUid, materialId);
+    showToast('Добавлено себе — загляни в «Личные», настрой доступ ученикам', 'success', 5000);
+  }catch(e){
+    showToast(e.message || 'Не получилось добавить');
   }
 }
 function startEditAccess(id){
@@ -853,11 +934,25 @@ function renderMaterialsView(){
       </div>
       <div class="filelabel" style="margin-top:0.375rem;">Кому видно</div>
       ${addPicker}
+      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin:0.5rem 0;">
+        <input type="checkbox" id="matVisibleToFriends"> Показывать друзьям-репетиторам
+      </label>
       <button class="btn btn-done" style="width:100%; margin-top:0.375rem;" onclick="addMaterial()">+ Добавить</button>
     </div>
-    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin-bottom:0.75rem;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>
+    <div class="filelabel" style="margin-top:1rem;">Личные</div>
     ${groupHtml('Разбираем', '📖', discussList)}
     ${groupHtml('Тренируемся', '🏋️', practiceList)}
+    <div class="filelabel" style="margin-top:1rem;">От друзей</div>
+    ${(friendMaterials||[]).length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пока никто ничем не поделился</div>' : friendMaterials.map(m => `
+      <div class="matcard">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span>${materialIcon(m.url)}</span>
+          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
+        </div>
+        <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">от ${esc(m.__friendName||'коллеги')}</div>
+        <button class="btn btn-done" style="width:100%; margin-top:0.5rem;" onclick="addFriendMaterialToMine('${m.__friendUid}','${m.id}')">+ Добавить себе</button>
+      </div>`).join('')}
+    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin:0.75rem 0;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>
   `;
 }
 
@@ -868,6 +963,10 @@ function render(){
 
   if(viewMode === 'materials'){
     wrap.innerHTML = renderMaterialsView();
+    return;
+  }
+  if(viewMode === 'friends'){
+    wrap.innerHTML = renderFriendsView();
     return;
   }
   if(viewMode === 'settings'){
@@ -933,7 +1032,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     EmailAuthProvider, reauthenticateWithCredential, updatePassword
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection
+    getFirestore, doc, getDoc, setDoc, deleteDoc, onSnapshot, collection, query, where
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { firebaseConfig } from "../assets/firebase-config.js";
 
@@ -1043,6 +1142,106 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     catch (e) { console.error('save profile failed', e); }
   };
 
+  function friendPairId(a, b) { return a < b ? a + '_' + b : b + '_' + a; }
+  function makeFriendCode() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    let c = '';
+    for (let i = 0; i < 5; i++) c += chars[Math.floor(Math.random() * chars.length)];
+    return 'К-' + c;
+  }
+
+  window.__fbEnsureFriendCode = async function () {
+    if (!currentUid) return;
+    if (friendCode) return; // already loaded from meta snapshot
+    const code = makeFriendCode();
+    try {
+      await setDoc(doc(db, 'tutorLinks', code), { tutorUid: currentUid });
+      friendCode = code;
+      setDoc(doc(db, 'users', currentUid, 'appdata', 'meta'), { friendCode: code }, { merge: true }).catch(() => {});
+      if (viewMode === 'friends') { document.getElementById('mainArea').innerHTML = renderFriendsView(); }
+    } catch (e) { console.error('friend code creation failed', e); }
+  };
+
+  window.__fbAddFriend = async function (rawCode) {
+    const code = rawCode.startsWith('К-') || rawCode.startsWith('K-') ? 'К-' + rawCode.slice(2) : rawCode;
+    const linkSnap = await getDoc(doc(db, 'tutorLinks', code));
+    if (!linkSnap.exists()) throw new Error('Такого кода не существует — проверь, что скопировал правильно');
+    const ownerUid = linkSnap.data().tutorUid;
+    if (ownerUid === currentUid) throw new Error('Это твой собственный код');
+    const pairId = friendPairId(currentUid, ownerUid);
+    await setDoc(doc(db, 'friendships', pairId), {
+      uidA: currentUid, uidB: ownerUid, viaCode: code, createdAt: Date.now()
+    });
+    try {
+      const profSnap = await getDoc(doc(db, 'users', ownerUid, 'appdata', 'profile'));
+      return profSnap.exists() ? profSnap.data().name : null;
+    } catch (e) { return null; }
+  };
+
+  window.__fbRemoveFriend = async function (friendUid) {
+    if (!currentUid) return;
+    try { await deleteDoc(doc(db, 'friendships', friendPairId(currentUid, friendUid))); }
+    catch (e) { console.error('remove friend failed', e); }
+  };
+
+  window.__fbCopyFriendMaterial = async function (friendUid, materialId) {
+    const snap = await getDoc(doc(db, 'users', friendUid, 'materials', materialId));
+    if (!snap.exists()) throw new Error('Материал уже недоступен');
+    const src = snap.data();
+    const copy = {
+      id: uid(), name: src.name, url: src.url, category: src.category || 'discuss',
+      storage: src.storage, fileName: src.fileName || null, fileOwnerUid: src.storage === 'timeweb' ? friendUid : null,
+      visibleToAll: false, studentIds: [], visibleToFriends: false,
+      copiedFrom: friendUid,
+    };
+    data.materials = [...(data.materials || []), copy];
+    if (window.__fbUpsertMaterial) window.__fbUpsertMaterial(copy);
+    try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+    render();
+  };
+
+  let friendUids = [];
+  const unsubFriendMaterials = {};
+  function startFriendsSync(myUid) {
+    onSnapshot(query(collection(db, 'friendships'), where('uidA', '==', myUid)), (snap) => {
+      handleFriendshipDocs(myUid, snap.docs.map(d => d.data()));
+    }, (err) => console.error('friendships(A) sync error', err));
+    onSnapshot(query(collection(db, 'friendships'), where('uidB', '==', myUid)), (snap) => {
+      handleFriendshipDocs(myUid, snap.docs.map(d => d.data()));
+    }, (err) => console.error('friendships(B) sync error', err));
+  }
+  let knownFriendships = {}; // pairKey -> otherUid, merged from both listeners
+  async function handleFriendshipDocs(myUid, docsBatch) {
+    docsBatch.forEach(f => {
+      const otherUid = f.uidA === myUid ? f.uidB : f.uidA;
+      knownFriendships[otherUid] = true;
+    });
+    const uids = Object.keys(knownFriendships);
+    friendUids = uids;
+    const list = [];
+    for (const fUid of uids) {
+      let name = null;
+      try {
+        const p = await getDoc(doc(db, 'users', fUid, 'appdata', 'profile'));
+        if (p.exists()) name = p.data().name;
+      } catch (e) {}
+      list.push({ uid: fUid, name });
+      if (!unsubFriendMaterials[fUid]) {
+        unsubFriendMaterials[fUid] = onSnapshot(
+          query(collection(db, 'users', fUid, 'materials'), where('visibleToFriends', '==', true)),
+          (snap) => {
+            const theirs = snap.docs.map(d => ({ ...d.data(), __friendUid: fUid, __friendName: name || 'коллеги' }));
+            friendMaterials = friendMaterials.filter(m => m.__friendUid !== fUid).concat(theirs);
+            if (viewMode === 'materials') render();
+          },
+          (err) => console.error('friend materials sync error', err)
+        );
+      }
+    }
+    friendsList = list;
+    if (viewMode === 'friends') render();
+  }
+
   function pushSaveToFirestore() {
     if (!currentUid) return;
     clearTimeout(saveTimer);
@@ -1057,7 +1256,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
       });
       setDoc(doc(db, 'users', currentUid, 'appdata', 'meta'), {
         openIds: data.openIds || [], theme: data.theme || 'classic'
-      }).catch((e) => console.error('save meta failed', e));
+      }, { merge: true }).catch((e) => console.error('save meta failed', e));
     }, 400);
   }
   window.__firestoreSave = pushSaveToFirestore;
@@ -1130,6 +1329,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     }, (err) => console.error('students sync error', err));
     unsubMeta = onSnapshot(doc(db, 'users', uid, 'appdata', 'meta'), (snap) => {
       latestMeta = snap.exists() ? snap.data() : { openIds: [] };
+      if (latestMeta.friendCode) friendCode = latestMeta.friendCode;
       metaLoaded = true;
       tryRender();
     }, (err) => console.error('meta sync error', err));
@@ -1141,6 +1341,7 @@ window.addEventListener('appinstalled', () => { installBtn.style.display = 'none
     onSnapshot(doc(db, 'users', uid, 'appdata', 'profile'), (snap) => {
       if (snap.exists() && window.loadProfileIntoForm) window.loadProfileIntoForm(snap.data());
     }, (err) => console.error('profile sync error', err));
+    startFriendsSync(uid);
   }
 
   onAuthStateChanged(auth, async (user) => {

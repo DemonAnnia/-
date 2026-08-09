@@ -41,6 +41,7 @@
     <span>Всё для твоего урока — здесь.</span>
     <span id="lessonCounterPill"></span>
   </div>
+  <div id="tutorSwitcher" style="margin-top:0.625rem;"></div>
   <div id="mainArea" style="margin-top:1rem;"></div>
 </div>
 </div>
@@ -232,7 +233,45 @@ function renderSettingsSection(){
         <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
         <button onclick="changePassword()" style="width:100%; padding:0.5rem 0; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-weight:600; font-size:0.8125rem; cursor:pointer;">Сменить пароль</button>
       </div>
+    </div></div>
+    <div class="card" style="margin-top:0.75rem;"><div class="body">
+      <div class="filelabel">Добавиться к новому репетитору</div>
+      <div style="font-size:0.75rem; color:#9BA3AE; margin-bottom:0.5rem;">Если занимаешься ещё с кем-то — впиши код, который он тебе даст</div>
+      <div style="display:flex; gap:0.375rem;">
+        <input id="newTutorCode" type="text" placeholder="код репетитора" style="flex:1; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; text-transform:uppercase;">
+        <button onclick="addTutorByCode()" style="padding:0 1rem; border-radius:0.625rem; border:none; background:#1F2A3D; color:#fff; font-weight:600; font-size:0.8125rem; cursor:pointer;">Добавить</button>
+      </div>
     </div></div>`;
+}
+
+let allTutorLinks = []; // [{tutorUid, studentId, tutorName}]
+let activeLinkIndex = 0;
+function renderTutorSwitcher(){
+  const el = document.getElementById('tutorSwitcher');
+  if(!el) return;
+  if(allTutorLinks.length <= 1){ el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="display:flex; gap:0.375rem; flex-wrap:wrap;">
+    ${allTutorLinks.map((l,i) => `<button onclick="switchTutorLink(${i})" style="padding:0.375rem 0.75rem; border-radius:999px; border:1px solid ${i===activeLinkIndex?'#1F2A3D':'#C9D2DB'}; background:${i===activeLinkIndex?'#1F2A3D':'#fff'}; color:${i===activeLinkIndex?'#fff':'#5A6472'}; font-size:0.78125rem; font-weight:600; cursor:pointer;">Ты у ${esc(l.tutorName || 'репетитора')}</button>`).join('')}
+  </div>`;
+}
+function switchTutorLink(i){
+  if(i === activeLinkIndex) return;
+  activeLinkIndex = i;
+  if(window.__fbSwitchTutor) window.__fbSwitchTutor(allTutorLinks[i]);
+  renderTutorSwitcher();
+}
+async function addTutorByCode(){
+  const input = document.getElementById('newTutorCode');
+  const code = input.value.trim().toUpperCase();
+  if(!code){ showToast('Впиши код'); return; }
+  if(!window.__fbAddTutorByCode){ showToast('Сейчас недоступно, попробуй позже'); return; }
+  try{
+    await window.__fbAddTutorByCode(code);
+    showToast('Добавлено! Переключись сверху, чтобы посмотреть', 'success', 5000);
+    input.value = '';
+  }catch(e){
+    showToast(e.message || 'Не получилось добавить — проверь код');
+  }
 }
 
 function renderStudentView(student, materials, profile){
@@ -247,6 +286,7 @@ function renderStudentView(student, materials, profile){
   document.getElementById('notFoundOverlay').style.display = 'none';
   root.style.display = 'block';
   document.getElementById('headerGreeting').textContent = `👋 Привет, ${student.name}!`;
+  renderTutorSwitcher();
   const count = student.completedLessonsCount || 0;
   document.getElementById('lessonCounterPill').innerHTML = count > 0
     ? `<span style="font-size:0.75rem; font-weight:600; background:#E2EFE6; color:#1F5C3A; padding:0.2rem 0.5rem; border-radius:999px;">🎉 Уже ${count} занят${count===1?'ие':(count<5?'ия':'ий')} вместе</span>`
@@ -270,7 +310,7 @@ function renderStudentView(student, materials, profile){
     EmailAuthProvider, reauthenticateWithCredential, updatePassword
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where
+    getFirestore, doc, getDoc, getDocs, setDoc, onSnapshot, collection, query, where, runTransaction
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { firebaseConfig } from "../assets/firebase-config.js";
 
@@ -314,13 +354,11 @@ function renderStudentView(student, materials, profile){
     return s;
   }
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) { window.location.replace('../index.html'); return; }
+  let unsubActive = []; // holds unsubscribe fns for the currently subscribed tutor's data
+  function subscribeToTutor(tutorUid, studentId){
+    unsubActive.forEach(fn => { try{ fn(); }catch(e){} });
+    unsubActive = [];
 
-    const accessSnap = await getDoc(doc(db, 'studentAccess', user.uid));
-    if (!accessSnap.exists()) { window.location.replace('tutor.html'); return; }
-
-    const { tutorUid, studentId } = accessSnap.data();
     const studentRef = doc(db, 'users', tutorUid, 'students', studentId);
     const themeRef = doc(db, 'users', tutorUid, 'students', studentId, 'prefs', 'theme');
     const profileRef = doc(db, 'users', tutorUid, 'appdata', 'profile');
@@ -339,32 +377,82 @@ function renderStudentView(student, materials, profile){
       renderStudentView(studentData, Object.values(byId), tutorProfile);
     }
 
-    onSnapshot(studentRef, (snap) => {
+    unsubActive.push(onSnapshot(studentRef, (snap) => {
       studentData = snap.exists() ? migrateStudent(snap.data()) : null;
       renderMerged();
-    }, () => renderStudentView(null, []));
+    }, () => renderStudentView(null, [])));
 
-    onSnapshot(themeRef, (snap) => {
+    unsubActive.push(onSnapshot(themeRef, (snap) => {
       currentTheme = snap.exists() ? (snap.data().theme || 'classic') : 'classic';
       applyTheme();
       const picker = document.getElementById('themePicker');
       if (picker) picker.innerHTML = themePickerHTML();
-    }, () => {});
+    }, () => {}));
 
-    onSnapshot(profileRef, (snap) => {
+    unsubActive.push(onSnapshot(profileRef, (snap) => {
       tutorProfile = snap.exists() ? snap.data() : null;
       renderMerged();
-    }, (err) => console.error('profile sync error', err));
+    }, (err) => console.error('profile sync error', err)));
 
     const materialsCol = collection(db, 'users', tutorUid, 'materials');
-    onSnapshot(query(materialsCol, where('visibleToAll', '==', true)), (snap) => {
+    unsubActive.push(onSnapshot(query(materialsCol, where('visibleToAll', '==', true)), (snap) => {
       materialsAll = snap.docs.map(d => d.data());
       renderMerged();
-    }, (err) => console.error('materials(all) sync error', err));
-    onSnapshot(query(materialsCol, where('studentIds', 'array-contains', studentId)), (snap) => {
+    }, (err) => console.error('materials(all) sync error', err)));
+    unsubActive.push(onSnapshot(query(materialsCol, where('studentIds', 'array-contains', studentId)), (snap) => {
       materialsMine = snap.docs.map(d => d.data());
       renderMerged();
-    }, (err) => console.error('materials(mine) sync error', err));
+    }, (err) => console.error('materials(mine) sync error', err)));
+  }
+
+  window.__fbSwitchTutor = function (link) {
+    subscribeToTutor(link.tutorUid, link.studentId);
+  };
+
+  window.__fbAddTutorByCode = async function (code) {
+    const linkRef = doc(db, 'studentLinks', code);
+    const myUid = auth.currentUser.uid;
+    await runTransaction(db, async (tx) => {
+      const linkSnap = await tx.get(linkRef);
+      if (!linkSnap.exists() || linkSnap.data().claimed) {
+        throw new Error('Такого кода не существует или он уже использован');
+      }
+      const { tutorUid, studentId } = linkSnap.data();
+      tx.update(linkRef, { claimed: true, claimedBy: myUid });
+      tx.set(doc(db, 'studentAccess', myUid), { isStudent: true }, { merge: true });
+      tx.set(doc(db, 'studentAccess', myUid, 'links', tutorUid), { studentId });
+    });
+    await loadAllTutorLinks(myUid);
+  };
+
+  async function loadAllTutorLinks(uid){
+    const linksSnap = await getDocs(collection(db, 'studentAccess', uid, 'links'));
+    const links = [];
+    for (const d of linksSnap.docs) {
+      const tutorUid = d.id;
+      const { studentId } = d.data();
+      let tutorName = null;
+      try {
+        const p = await getDoc(doc(db, 'users', tutorUid, 'appdata', 'profile'));
+        if (p.exists()) tutorName = p.data().name;
+      } catch (e) {}
+      links.push({ tutorUid, studentId, tutorName: tutorName ? tutorName.split(' ')[1] || tutorName : null });
+    }
+    allTutorLinks = links;
+    return links;
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) { window.location.replace('../index.html'); return; }
+
+    const accessSnap = await getDoc(doc(db, 'studentAccess', user.uid));
+    if (!accessSnap.exists()) { window.location.replace('tutor.html'); return; }
+
+    const links = await loadAllTutorLinks(user.uid);
+    if (links.length === 0) { renderStudentView(null, []); return; }
+
+    activeLinkIndex = 0;
+    subscribeToTutor(links[0].tutorUid, links[0].studentId);
   });
 
   if ("serviceWorker" in navigator) {
