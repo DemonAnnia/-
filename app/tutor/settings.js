@@ -87,6 +87,11 @@ function saveProfile(){
 }
 
 let dataPanelOpen = false;
+let notifHelpOpen = false;
+function toggleNotifHelp(){
+  notifHelpOpen = !notifHelpOpen;
+  if(window.refreshSettingsPushStatus) window.refreshSettingsPushStatus();
+}
 function renderPushSettingsInner(){
   const status = window.__pushStatus ? window.__pushStatus() : 'unsupported';
   if(status === 'unsupported'){
@@ -103,7 +108,17 @@ function renderPushSettingsInner(){
         <span style="font-size:0.78125rem; color:#2E7D4F;">✓ Включены</span>
       </div>
       <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Новый ученик, коллега поделился материалом и другие события.</div>
-      <a href="#" onclick="window.__fbSendSelfTestPush();return false;" style="font-size:0.71875rem; color:#5A6472; display:inline-block; margin-top:0.375rem;">Отправить тестовое уведомление самой себе</a>`;
+      <a href="#" onclick="window.__fbSendSelfTestPush();return false;" style="font-size:0.71875rem; color:#5A6472; display:inline-block; margin-top:0.375rem;">Отправить тестовое уведомление самой себе</a>
+      <br>
+      <a href="#" onclick="toggleNotifHelp();return false;" style="font-size:0.71875rem; color:#5A6472; display:inline-block; margin-top:0.375rem;">Уведомления приходят тихо, без звука? ${notifHelpOpen?'▴':'▾'}</a>
+      <div id="notifHelpPanel" style="display:${notifHelpOpen?'block':'none'}; margin-top:0.5rem; padding:0.625rem; background:#F6F7F5; border-radius:0.5rem; font-size:0.75rem; color:#3A4250; line-height:1.5;">
+        Это не баг приложения — телефон сам решает, показывать ли уведомление громко или тихо, отдельно для каждого сайта. Обычно помогает:
+        <div style="margin-top:0.5rem;"><b>На любом Android:</b><br>
+        Настройки телефона → Приложения → Chrome → Уведомления → найди в списке этот сайт (или раздел «Сайты») → включи «Всплывающее уведомление», «Звук» и «Вибрация».</div>
+        <div style="margin-top:0.5rem;"><b>Если это Xiaomi/MIUI:</b><br>
+        Там же у Chrome обычно есть свои переключатели «Показывать во всплывающем окне» и «На заблокированном экране» — включи оба. Ещё стоит проверить: Настройки → Батарея → Приложения с ограничениями — Chrome не должен быть в этом списке.</div>
+        <div style="margin-top:0.5rem;">После изменения настройки нажми «Отправить тестовое уведомление самой себе» выше ещё раз, чтобы проверить.</div>
+      </div>`;
   }
   if(status === 'denied'){
     return `<div class="filelabel" style="margin:0;">Уведомления</div>
