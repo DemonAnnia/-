@@ -110,6 +110,8 @@ function renderPushSettingsInner(){
       <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Новый ученик, коллега поделился материалом и другие события.</div>
       <a href="#" onclick="window.__fbSendSelfTestPush();return false;" style="font-size:0.71875rem; color:#5A6472; display:inline-block; margin-top:0.375rem;">Отправить тестовое уведомление самой себе</a>
       <br>
+      <a href="#" onclick="window.__reRegisterPushDevice();return false;" style="font-size:0.71875rem; color:#5A6472; display:inline-block; margin-top:0.375rem;">Обновить это устройство</a>
+      <br>
       <a href="#" onclick="toggleNotifHelp();return false;" style="font-size:0.71875rem; color:#5A6472; display:inline-block; margin-top:0.375rem;">Уведомления приходят тихо, без звука? ${notifHelpOpen?'▴':'▾'}</a>
       <div id="notifHelpPanel" style="display:${notifHelpOpen?'block':'none'}; margin-top:0.5rem; padding:0.625rem; background:#F6F7F5; border-radius:0.5rem; font-size:0.75rem; color:#3A4250; line-height:1.5;">
         Это не баг приложения — телефон сам решает, показывать ли уведомление громко или тихо, отдельно для каждого сайта. Обычно помогает:

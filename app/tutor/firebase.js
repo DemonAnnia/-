@@ -32,6 +32,24 @@
     return 'default';
   };
 
+  async function registerPushTokenSilently(){
+    if(!pushSupported() || !currentUid) return false;
+    if(Notification.permission !== 'granted') return false;
+    try{
+      const reg = await navigator.serviceWorker.ready;
+      const messaging = getMessaging(fbApp);
+      const token = await getFcmToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
+      if(!token) return false;
+      const safeId = token.replace(/[\/]/g, '_');
+      await setDoc(doc(db, 'users', currentUid, 'pushTokens', safeId), { token, updatedAt: Date.now() });
+      return true;
+    }catch(e){
+      console.error('silent push token registration failed', e);
+      return false;
+    }
+  }
+  window.__fbRegisterPushTokenSilently = registerPushTokenSilently;
+
   window.__fbEnablePush = async function(){
     if(!pushSupported()){ showToast('Этот браузер не поддерживает уведомления'); return; }
     if(isIOS() && !isStandalone()){
@@ -41,20 +59,20 @@
     try{
       const permission = await Notification.requestPermission();
       if(permission !== 'granted'){ showToast('Уведомления не разрешены — можно включить позже в настройках браузера'); return; }
-      const reg = await navigator.serviceWorker.ready;
-      const messaging = getMessaging(fbApp);
-      const token = await getFcmToken(messaging, { vapidKey, serviceWorkerRegistration: reg });
-      if(!token){ showToast('Не получилось получить токен уведомлений'); return; }
-      if(currentUid){
-        const safeId = token.replace(/[\/]/g, '_');
-        await setDoc(doc(db, 'users', currentUid, 'pushTokens', safeId), { token, updatedAt: Date.now() });
-      }
-      showToast('Уведомления включены!', 'success', 4000);
+      const ok = await registerPushTokenSilently();
+      if(!ok){ showToast('Не получилось получить токен уведомлений'); return; }
+      showToast('Уведомления включены на этом устройстве!', 'success', 4000);
       if(window.refreshSettingsPushStatus) window.refreshSettingsPushStatus();
     }catch(e){
       console.error('enable push failed', e);
       showToast('Не получилось включить уведомления: ' + (e.message||'ошибка'));
     }
+  };
+
+  window.__reRegisterPushDevice = async function(){
+    showToast('Обновляю…', 'info', 4000);
+    const ok = await registerPushTokenSilently();
+    showToast(ok ? 'Готово, это устройство обновлено' : 'Не получилось — проверь разрешение уведомлений в браузере', ok ? 'success' : 'error', 6000);
   };
 
   window.__fbSendSelfTestPush = async function(){
@@ -441,4 +459,5 @@
     await migrateLegacyIfNeeded(user.uid);
     startTutorSync(user.uid);
     cleanupOrphanedFiles(user.uid); // не блокирует загрузку кабинета, идёт в фоне
+    registerPushTokenSilently(); // если разрешение уже было дано раньше — освежаем токен без диалога
   });
