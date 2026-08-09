@@ -74,6 +74,64 @@ function removeSubject(sid, subId){
   save();
 }
 
+// ---- Расписание: панель на карточке ученика (см. calendar-architecture.md, раздел 2) ----
+const DAY_NAMES = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+let scheduleAddDays = {}; // studentId -> [dayOfWeek,...]
+
+function toggleScheduleDay(sid, dow){
+  const cur = scheduleAddDays[sid] || [];
+  scheduleAddDays[sid] = cur.includes(dow) ? cur.filter(d=>d!==dow) : [...cur, dow];
+  render();
+}
+function focusTariffInput(sid){
+  const el = document.getElementById('sublabel-'+sid);
+  if(el){ el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus(); }
+}
+function scheduleGroupKey(r){ return `${r.time}|${r.subjectId||''}|${r.startDate}|${r.endDate||''}`; }
+function renderScheduleGroups(s){
+  const rules = s.scheduleRules || [];
+  if(rules.length === 0) return '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>';
+  const groups = {};
+  rules.forEach(r => {
+    const key = scheduleGroupKey(r);
+    if(!groups[key]) groups[key] = { ...r, days: [], ruleIds: [] };
+    groups[key].days.push(r.dayOfWeek);
+    groups[key].ruleIds.push(r.id);
+  });
+  return Object.values(groups).map(g => {
+    const daysLabel = g.days.slice().sort().map(d=>DAY_NAMES[d]).join(', ');
+    const tariff = g.subjectId ? (s.subjects||[]).find(sub=>sub.id===g.subjectId) : null;
+    const rangeLabel = g.endDate ? ` · до ${esc(g.endDate)}` : '';
+    return `
+      <div class="filerow">
+        <span>📅</span>
+        <span style="flex:1; font-size:0.8125rem;">${esc(daysLabel)} · ${esc(g.time)}${tariff ? ` · ${esc(tariff.label)}` : ''}${rangeLabel}</span>
+        <button class="iconbtn" onclick="deleteScheduleGroup('${s.id}','${g.ruleIds.join(',')}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+      </div>`;
+  }).join('');
+}
+function addScheduleGroup(sid){
+  const days = scheduleAddDays[sid] || [];
+  if(days.length === 0){ showToast('Выбери хотя бы один день недели'); return; }
+  const time = document.getElementById('scheduletime-'+sid).value;
+  if(!time){ showToast('Укажи время'); return; }
+  const startEl = document.getElementById('schedulestart-'+sid);
+  const startDate = startEl.value || fmtDate(new Date());
+  const tariffEl = document.getElementById('scheduletariff-'+sid);
+  const subjectId = tariffEl ? (tariffEl.value || null) : null;
+  days.forEach(dow => {
+    if(window.__fbSaveRule) window.__fbSaveRule(sid, { dayOfWeek: dow, time, startDate, endDate: null, subjectId });
+  });
+  scheduleAddDays[sid] = [];
+  showToast('Добавлено в расписание', 'success', 3000);
+  render();
+}
+function deleteScheduleGroup(sid, ruleIdsJoined){
+  ruleIdsJoined.split(',').forEach(ruleId => {
+    if(window.__fbDeleteRule) window.__fbDeleteRule(sid, ruleId);
+  });
+}
+
 let studentSubjectFilter = 'all';
 function setStudentSubjectFilter(v){ studentSubjectFilter = v; render(); }
 
@@ -222,6 +280,26 @@ function cardHTML(s){
             <input class="furl" type="text" id="subprice-${s.id}" placeholder="цена (напр. 2900 ₽)">
             <button class="addfilebtn" onclick="addSubject('${s.id}')">+</button>
           </div>
+          <div class="filelabel" style="margin-top:0.75rem;">Расписание</div>
+          ${renderScheduleGroups(s)}
+          <div style="display:flex; gap:0.25rem; margin-bottom:0.375rem;">
+            ${DAY_NAMES.map((name, dow) => `<span class="mat-pill ${(scheduleAddDays[s.id]||[]).includes(dow)?'picked':''}" style="flex:1; justify-content:center; padding:0.3rem 0.25rem;" onclick="toggleScheduleDay('${s.id}',${dow})">${name}</span>`).join('')}
+          </div>
+          <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+            <input type="time" id="scheduletime-${s.id}" value="16:00" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+            <input type="date" id="schedulestart-${s.id}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          </div>
+          ${(s.subjects||[]).length===0 ? `
+            <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.375rem;" onclick="focusTariffInput('${s.id}')">Тарифов пока нет — завести</button>
+            <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.375rem;">или оставь пока так, донастроишь тариф позже</div>
+          ` : `
+            <select id="scheduletariff-${s.id}" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+              <option value="">без привязки к тарифу</option>
+              ${s.subjects.map(sub=>`<option value="${sub.id}">${esc(sub.label)} · ${esc(sub.price)}</option>`).join('')}
+            </select>
+          `}
+          <button class="btn btn-done" style="width:100%; margin-bottom:0.5rem;" onclick="addScheduleGroup('${s.id}')">+ Добавить в расписание</button>
+          ${renderUpcomingLessons(s)}
         </div>
         <label class="checklabel"><input type="checkbox" ${s.needsPaymentReport?'checked':''} onchange="updateStudent('${s.id}',{needsPaymentReport:this.checked})"> Родителю нужно писать про оплату после урока</label>
 

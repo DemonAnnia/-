@@ -30,8 +30,9 @@
 
   <hr class="drawer-hr">
   <button class="drawer-item" onclick="showMaterialsView()">📚 Материалы</button>
+  <button class="drawer-item" style="color:#B7BEC7; cursor:default;" onclick="showToast('Тренажёры — в работе, скоро будут.', 'info', 4000)">🧠 Тренажёры <span style="margin-left:auto; font-size:0.6875rem; background:#F1F3F5; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></button>
   <button class="drawer-item" onclick="showFriendsView()">👥 Друзья</button>
-  <button class="drawer-item" style="color:#B7BEC7; cursor:default;" onclick="showToast('Календарь занятий — в работе, скоро будет.', 'info', 4000)">📅 Календарь <span style="margin-left:auto; font-size:0.6875rem; background:#F1F3F5; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></button>
+  <button class="drawer-item" onclick="showCalendarView()">📅 Календарь <span id="calendarBadge" style="display:none; margin-left:auto; font-size:0.6875rem; background:#C0392B; color:#fff; padding:0.1rem 0.4rem; border-radius:999px;"></span></button>
 
   <hr class="drawer-hr">
   <button class="drawer-item" onclick="showSettingsView()">⚙️ Настройки</button>
@@ -54,6 +55,8 @@
 </div>
 
 <script src="tutor/shared.js"></script>
+<script src="tutor/calendar.js"></script>
+<script src="tutor/scheduleUI.js"></script>
 <script src="tutor/students.js"></script>
 <script src="tutor/materials.js"></script>
 <script src="tutor/friends.js"></script>

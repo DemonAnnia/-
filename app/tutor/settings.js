@@ -14,6 +14,9 @@ function setTutorTheme(themeId){
 let profileContacts = [];
 let profilePrimaryId = null;
 let profileSubjects = [];
+let profNameValue = '';
+let profShowSubjectValue = false;
+let profShowContactsValue = false;
 function addProfileSubject(){
   const input = document.getElementById('newSubject');
   const value = input.value.trim();
@@ -50,6 +53,9 @@ function loadProfileIntoForm(p){
   profileContacts = p.contacts || [];
   profilePrimaryId = p.primaryContactId || (profileContacts[0] ? profileContacts[0].id : null);
   profileSubjects = Array.isArray(p.subjects) ? p.subjects : (p.subject ? [p.subject] : []);
+  profNameValue = p.name || '';
+  profShowSubjectValue = !!p.showSubject;
+  profShowContactsValue = !!p.showContacts;
   if(viewMode==='settings') renderSettingsView();
 }
 function contactTypeGridHTML(){
@@ -74,11 +80,13 @@ function contactTypeGridHTML(){
   }).join('');
 }
 function saveProfile(){
+  const nameEl = document.getElementById('profName');
+  if(nameEl) profNameValue = nameEl.value.trim();
   const profile = {
-    name: document.getElementById('profName').value.trim(),
+    name: profNameValue.trim(),
     subjects: profileSubjects,
-    showSubject: document.getElementById('profShowSubject').checked,
-    showContacts: document.getElementById('profShowContacts').checked,
+    showSubject: profShowSubjectValue,
+    showContacts: profShowContactsValue,
     contacts: profileContacts,
     primaryContactId: profilePrimaryId,
   };
@@ -157,7 +165,7 @@ function renderSettingsView(){
 
     <div class="matcard" style="margin-top:0.75rem;">
       <div class="filelabel">О себе — видно ученикам</div>
-      <input id="profName" type="text" placeholder="ФИО" value="${esc(p.name)}" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <input id="profName" type="text" placeholder="ФИО" value="${esc(profNameValue)}" oninput="profNameValue=this.value" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
       <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem;">Предметы</div>
       <div id="profSubjects" style="display:flex; flex-wrap:wrap; gap:0.375rem; margin-bottom:0.375rem;">
         ${(profileSubjects.length===0) ? '<div style="font-size:0.75rem;color:#9BA3AE;">Пока пусто</div>' : profileSubjects.map(s => `
@@ -171,12 +179,12 @@ function renderSettingsView(){
         <button onclick="addProfileSubject()" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer;">+</button>
       </div>
       <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.75rem; cursor:pointer;">
-        <input id="profShowSubject" type="checkbox" ${p.showSubject?'checked':''}> Показывать предметы ученикам
+        <input id="profShowSubject" type="checkbox" ${profShowSubjectValue?'checked':''} onchange="profShowSubjectValue=this.checked"> Показывать предметы ученикам
       </label>
       <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.5rem;">Контакты</div>
       ${contactTypeGridHTML()}
       <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.5rem; cursor:pointer;">
-        <input id="profShowContacts" type="checkbox" ${p.showContacts?'checked':''}> Показывать контакты ученикам
+        <input id="profShowContacts" type="checkbox" ${profShowContactsValue?'checked':''} onchange="profShowContactsValue=this.checked"> Показывать контакты ученикам
       </label>
       <button onclick="saveProfile()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сохранить профиль</button>
     </div>

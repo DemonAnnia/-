@@ -38,6 +38,7 @@ const PAGE_HEADERS = {
   materials: { title: '📚 Материалы', sub: 'Файлы и ссылки для твоих уроков — свои, от друзей и общие.' },
   friends: { title: '👥 Друзья', sub: 'Коллеги-репетиторы, с которыми вы делитесь материалами.' },
   settings: { title: '⚙️ Настройки', sub: 'Профиль, тема, пароль и резервные копии.' },
+  calendar: { title: '📅 Календарь', sub: 'Каникулы и нерешённые вопросы по расписанию.' },
 };
 function updatePageHeader(){
   const h = PAGE_HEADERS[viewMode] || PAGE_HEADERS.students;
@@ -51,6 +52,7 @@ function render(){
   renderDrawerLists();
   applyTutorTheme();
   updatePageHeader();
+  if(window.updateCalendarBadge) updateCalendarBadge();
   const wrap = document.getElementById('mainArea');
 
   if(viewMode === 'overview'){
@@ -67,6 +69,10 @@ function render(){
   }
   if(viewMode === 'settings'){
     renderSettingsView();
+    return;
+  }
+  if(viewMode === 'calendar'){
+    wrap.innerHTML = renderCalendarView();
     return;
   }
 

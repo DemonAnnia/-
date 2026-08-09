@@ -97,6 +97,21 @@
       materialsMine = snap.docs.map(d => d.data());
       renderMerged();
     }, (err) => console.error('materials(mine) sync error', err)));
+
+    // ---- Календарь: только чтение своего расписания (см. calendar-architecture.md) ----
+    window.__scheduleData = { rules: [], breaks: [], exceptions: [] };
+    unsubActive.push(onSnapshot(collection(db, 'users', tutorUid, 'students', studentId, 'scheduleRules'), (snap) => {
+      window.__scheduleData.rules = snap.docs.map(d => d.data());
+      if (window.onScheduleDataChanged) window.onScheduleDataChanged();
+    }, () => {}));
+    unsubActive.push(onSnapshot(collection(db, 'users', tutorUid, 'students', studentId, 'scheduleBreaks'), (snap) => {
+      window.__scheduleData.breaks = snap.docs.map(d => d.data());
+      if (window.onScheduleDataChanged) window.onScheduleDataChanged();
+    }, () => {}));
+    unsubActive.push(onSnapshot(collection(db, 'users', tutorUid, 'students', studentId, 'scheduleExceptions'), (snap) => {
+      window.__scheduleData.exceptions = snap.docs.map(d => d.data());
+      if (window.onScheduleDataChanged) window.onScheduleDataChanged();
+    }, () => {}));
   }
 
   window.__fbSwitchTutor = function (link) {

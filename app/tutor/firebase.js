@@ -416,6 +416,63 @@
     });
   }
 
+  // ---- Календарь: подписки на правило/каникулы/исключения каждого ученика ----
+  let subscribedScheduleIds = new Set();
+  function subscribeStudentSchedules(uid, students){
+    students.forEach(s => {
+      if (subscribedScheduleIds.has(s.id)) return;
+      subscribedScheduleIds.add(s.id);
+      onSnapshot(collection(db, 'users', uid, 'students', s.id, 'scheduleRules'), (snap) => {
+        const st = data.students.find(x => x.id === s.id);
+        if (st) st.scheduleRules = snap.docs.map(d => d.data());
+        render();
+      }, () => {});
+      onSnapshot(collection(db, 'users', uid, 'students', s.id, 'scheduleBreaks'), (snap) => {
+        const st = data.students.find(x => x.id === s.id);
+        if (st) st.scheduleBreaks = snap.docs.map(d => d.data());
+        render();
+      }, () => {});
+      onSnapshot(collection(db, 'users', uid, 'students', s.id, 'scheduleExceptions'), (snap) => {
+        const st = data.students.find(x => x.id === s.id);
+        if (st) st.scheduleExceptions = snap.docs.map(d => d.data());
+        render();
+      }, () => {});
+    });
+  }
+
+  window.__fbSaveRule = async function(studentId, rule){
+    if (!currentUid) return;
+    const id = rule.id || uid();
+    try { await setDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleRules', id), { ...rule, id }); }
+    catch (e) { console.error('save rule failed', e); }
+  };
+  window.__fbDeleteRule = async function(studentId, ruleId){
+    if (!currentUid) return;
+    try { await deleteDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleRules', ruleId)); }
+    catch (e) { console.error('delete rule failed', e); }
+  };
+  window.__fbSaveBreak = async function(studentId, brk){
+    if (!currentUid) return;
+    const id = brk.id || uid();
+    try { await setDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleBreaks', id), { ...brk, id }); }
+    catch (e) { console.error('save break failed', e); }
+  };
+  window.__fbDeleteBreak = async function(studentId, breakId){
+    if (!currentUid) return;
+    try { await deleteDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleBreaks', breakId)); }
+    catch (e) { console.error('delete break failed', e); }
+  };
+  window.__fbSaveException = async function(studentId, dateStr, exception){
+    if (!currentUid) return;
+    try { await setDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleExceptions', dateStr), { ...exception, date: dateStr }); }
+    catch (e) { console.error('save exception failed', e); }
+  };
+  window.__fbDeleteException = async function(studentId, dateStr){
+    if (!currentUid) return;
+    try { await deleteDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleExceptions', dateStr)); }
+    catch (e) { console.error('delete exception failed', e); }
+  };
+
   let watchedCodes = new Set();
   function watchPendingInviteCodes(uid, students){
     students.forEach(s => {
@@ -441,6 +498,7 @@
       document.getElementById('loadingScreen').style.display = 'none';
       document.getElementById('appRoot').style.display = 'block';
       subscribeStudentThemes(uid, latestStudents);
+      subscribeStudentSchedules(uid, latestStudents);
       watchPendingInviteCodes(uid, latestStudents);
       render();
     };
@@ -452,6 +510,12 @@
     unsubMeta = onSnapshot(doc(db, 'users', uid, 'appdata', 'meta'), (snap) => {
       latestMeta = snap.exists() ? snap.data() : { openIds: [] };
       if (latestMeta.friendCode) friendCode = latestMeta.friendCode;
+      if (!latestMeta.timezone) {
+        try {
+          const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (detected) setDoc(doc(db, 'users', uid, 'appdata', 'meta'), { timezone: detected }, { merge: true }).catch(() => {});
+        } catch (e) {}
+      }
       metaLoaded = true;
       tryRender();
     }, (err) => console.error('meta sync error', err));
