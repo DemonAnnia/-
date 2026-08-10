@@ -145,14 +145,251 @@ function resolveBreakQuestion(sid, date, occurs){
   showToast(occurs ? 'Отмечено: занятие было' : 'Отмечено: занятия не было', 'success', 3000);
 }
 
+// ---- Общий календарь: фильтр + сетка на месяц + ближайшее занятие + сетка на неделю ----
+
+let calendarViewDate = new Date();
+let calendarFilterValue = 'all'; // 'all' | 'student:{id}' | 'subject:{name}'
+function setCalendarFilter(v){ calendarFilterValue = v; render(); }
+function shiftCalendarMonth(delta){
+  calendarViewDate = new Date(calendarViewDate.getFullYear(), calendarViewDate.getMonth()+delta, 1);
+  render();
+}
+function mondayIndex(jsDay){ return jsDay===0 ? 6 : jsDay-1; }
+function daysInMonth(year, month){ return new Date(year, month+1, 0).getDate(); }
+
+function getFilteredLessonsInRange(dateFromStr, dateToStr){
+  const students = (data.students||[]).filter(s=>!s.archived);
+  let results = [];
+  students.forEach(s => {
+    if(calendarFilterValue.startsWith('student:') && calendarFilterValue.slice(8) !== s.id) return;
+    const lessons = getLessons(s.scheduleRules||[], s.scheduleExceptions||[], s.scheduleBreaks||[], dateFromStr, dateToStr);
+    lessons.forEach(l => {
+      if(calendarFilterValue.startsWith('subject:')){
+        const subj = calendarFilterValue.slice(8);
+        const tariff = (s.subjects||[]).find(sub=>sub.id===l.subjectId);
+        if(!tariff || tariff.subject !== subj) return;
+      }
+      results.push({ ...l, studentId: s.id, studentName: s.name, format: s.format, accent: ACCENTS[s.accent]||ACCENTS[0] });
+    });
+  });
+  results.sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+  return results;
+}
+
+function renderCalendarFilterHTML(){
+  const students = (data.students||[]).filter(s=>!s.archived);
+  return `<select onchange="setCalendarFilter(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
+    <option value="all" ${calendarFilterValue==='all'?'selected':''}>📅 Мой общий календарь</option>
+    <optgroup label="По ученику">
+      ${students.map(s=>`<option value="student:${s.id}" ${calendarFilterValue==='student:'+s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
+    </optgroup>
+    ${profileSubjects.length > 1 ? `<optgroup label="По предмету">
+      ${profileSubjects.map(subj=>`<option value="subject:${esc(subj)}" ${calendarFilterValue==='subject:'+subj?'selected':''}>${esc(subj)}</option>`).join('')}
+    </optgroup>` : ''}
+  </select>`;
+}
+
+function renderMonthGrid(){
+  const year = calendarViewDate.getFullYear();
+  const month = calendarViewDate.getMonth();
+  const totalDays = daysInMonth(year, month);
+  const leadingBlanks = mondayIndex(new Date(year, month, 1).getDay());
+  const rangeFrom = fmtDate(new Date(year, month, 1));
+  const rangeTo = fmtDate(new Date(year, month, totalDays));
+  const lessons = getFilteredLessonsInRange(rangeFrom, rangeTo);
+  const byDate = {};
+  lessons.forEach(l => { (byDate[l.date] = byDate[l.date]||[]).push(l); });
+  const todayStr = fmtDate(new Date());
+
+  let cells = [];
+  for(let i=0;i<leadingBlanks;i++) cells.push('<div class="cal-cell cal-cell-empty"></div>');
+  for(let day=1; day<=totalDays; day++){
+    const dateStr = fmtDate(new Date(year, month, day));
+    const dayLessons = byDate[dateStr] || [];
+    const isToday = dateStr === todayStr;
+    cells.push(`
+      <div class="cal-cell ${isToday?'cal-cell-today':''}" ${dayLessons.length?`onclick="showDayLessons('${dateStr}')"`:''}>
+        <div class="cal-daynum">${day}</div>
+        <div class="cal-chips">
+          ${dayLessons.slice(0,4).map(l=>`<span class="cal-chip" style="background:${l.accent.ink};" title="${esc(l.studentName)} · ${esc(l.time)}"></span>`).join('')}
+          ${dayLessons.length>4 ? `<span style="font-size:0.5rem;color:#9BA3AE;">+${dayLessons.length-4}</span>` : ''}
+        </div>
+      </div>`);
+  }
+  const trailingBlanks = (7 - (cells.length % 7)) % 7;
+  for(let i=0;i<trailingBlanks;i++) cells.push('<div class="cal-cell cal-cell-empty"></div>');
+
+  return `
+    <div class="matcard">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+        <button class="iconbtn" onclick="shiftCalendarMonth(-1)">←</button>
+        <div style="font-weight:700; text-transform:capitalize; font-size:0.9375rem;">${calendarViewDate.toLocaleDateString('ru-RU',{month:'long', year:'numeric'})}</div>
+        <button class="iconbtn" onclick="shiftCalendarMonth(1)">→</button>
+      </div>
+      <div class="cal-grid cal-grid-header">
+        ${DAY_ORDER.map(dow=>`<div class="cal-cell-label">${DAY_NAMES[dow]}</div>`).join('')}
+      </div>
+      <div class="cal-grid">${cells.join('')}</div>
+    </div>
+  `;
+}
+
+function renderNextLessonLine(){
+  const now = new Date();
+  const todayStr = fmtDate(now);
+  const farStr = fmtDate(new Date(now.getTime() + 60*86400000));
+  const lessons = getFilteredLessonsInRange(todayStr, farStr).filter(l => l.status !== 'skipped');
+  const upcoming = lessons.find(l => {
+    const dt = new Date(l.date + 'T' + (l.time||'00:00'));
+    return dt.getTime() >= now.getTime() - 30*60000;
+  });
+  if(!upcoming){
+    return `<div class="matcard" style="text-align:center; color:#9BA3AE; font-size:0.8125rem; margin-top:0.75rem;">Занятий не запланировано</div>`;
+  }
+  const dt = new Date(upcoming.date + 'T' + (upcoming.time||'00:00'));
+  const diffMs = dt.getTime() - now.getTime();
+  const diffHrs = diffMs/3600000;
+  let whenLabel;
+  if(diffHrs < 0) whenLabel = 'сейчас идёт';
+  else if(diffHrs < 1) whenLabel = `через ${Math.max(1,Math.round(diffMs/60000))} мин`;
+  else if(diffHrs < 24) whenLabel = `через ${Math.round(diffHrs)} ч`;
+  else whenLabel = `через ${Math.round(diffHrs/24)} дн`;
+  return `<div class="matcard" style="display:flex; align-items:center; gap:0.625rem; margin-top:0.75rem;">
+    <span style="font-size:1.375rem;">⏰</span>
+    <div style="flex:1; font-size:0.875rem;"><b>${esc(whenLabel)}</b> — ${esc(upcoming.studentName)}, ${esc(upcoming.format||'')}, ${esc(upcoming.time)}${upcoming.status==='pending'?' <span style="color:#B5651D;">(уточняется)</span>':''}</div>
+  </div>`;
+}
+
+function renderWeekGrid(){
+  const now = new Date();
+  const monday = new Date(now); monday.setDate(now.getDate() - mondayIndex(now.getDay()));
+  const days = [];
+  for(let i=0;i<7;i++){ const d = new Date(monday); d.setDate(monday.getDate()+i); days.push(d); }
+  const fromStr = fmtDate(days[0]);
+  const toStr = fmtDate(days[6]);
+  const lessons = getFilteredLessonsInRange(fromStr, toStr);
+  const byDate = {};
+  lessons.forEach(l => { (byDate[l.date] = byDate[l.date]||[]).push(l); });
+  const todayStr = fmtDate(now);
+
+  return `
+    <div class="filelabel" style="margin-top:1rem;">Эта неделя</div>
+    <div class="hide-scrollbar" style="display:flex; gap:0.5rem; overflow-x:auto; padding-bottom:0.25rem;">
+      ${days.map((d,i) => {
+        const dateStr = fmtDate(d);
+        const dayLessons = (byDate[dateStr]||[]).sort((a,b)=>a.time.localeCompare(b.time));
+        const isToday = dateStr === todayStr;
+        return `<div class="matcard" style="min-width:8rem; flex-shrink:0; ${isToday?'border:1.5px solid #1F2A3D;':''}">
+          <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.375rem;">${DAY_NAMES[DAY_ORDER[i]]}, ${d.getDate()}</div>
+          ${dayLessons.length===0 ? '<div style="font-size:0.75rem;color:#C9D2DB;">—</div>' : dayLessons.map(l=>`
+            <div onclick="showDayLessons('${dateStr}')" style="display:flex; align-items:center; gap:0.375rem; padding:0.1875rem 0; cursor:pointer;">
+              <span style="width:0.4375rem;height:0.4375rem;border-radius:999px;background:${l.accent.ink};flex-shrink:0;"></span>
+              <span style="font-size:0.75rem;">${esc(l.time)} ${esc(l.studentName)}</span>
+            </div>`).join('')}
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function showDayLessons(dateStr){
+  showToast('Подробности по дню (материалы/тема/домашка) — в следующем шаге', 'info', 4000);
+}
+
+// ---- «Добавить занятие»: отдельный экран, начинается с выбора ученика ----
+let addLessonSheetOpen = false;
+let addLessonStudentId = null;
+let addLessonDays = [];
+function openAddLessonSheet(){
+  addLessonSheetOpen = true;
+  addLessonStudentId = null;
+  addLessonDays = [];
+  render();
+}
+function closeAddLessonSheet(){
+  addLessonSheetOpen = false;
+  render();
+}
+function setAddLessonStudent(id){
+  addLessonStudentId = id || null;
+  addLessonDays = [];
+  render();
+}
+function toggleAddLessonDay(dow){
+  const i = addLessonDays.indexOf(dow);
+  if(i>=0) addLessonDays.splice(i,1); else addLessonDays.push(dow);
+  render();
+}
+async function confirmAddLesson(){
+  if(!addLessonStudentId){ showToast('Выбери ученика'); return; }
+  if(addLessonDays.length===0){ showToast('Выбери хотя бы один день недели'); return; }
+  const time = document.getElementById('addLessonTime').value;
+  if(!time){ showToast('Укажи время'); return; }
+  const startEl = document.getElementById('addLessonStart');
+  const startDate = startEl.value || fmtDate(new Date());
+  const tariffEl = document.getElementById('addLessonTariff');
+  const subjectId = tariffEl ? (tariffEl.value || null) : null;
+  addLessonDays.forEach(dow => {
+    if(window.__fbSaveRule) window.__fbSaveRule(addLessonStudentId, { dayOfWeek: dow, time, startDate, endDate: null, subjectId });
+  });
+  showToast('Добавлено в расписание', 'success', 3000);
+  closeAddLessonSheet();
+}
+function renderAddLessonSheet(){
+  if(!addLessonSheetOpen) return '';
+  const student = data.students.find(s=>s.id===addLessonStudentId);
+  return `
+  <div class="mat-sheet-backdrop" onclick="closeAddLessonSheet()"></div>
+  <div class="mat-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">➕ Добавить занятие</div>
+      <button class="hamburger" onclick="closeAddLessonSheet()">✕</button>
+    </div>
+    <div style="padding:0 1rem 1.5rem;">
+      <div class="filelabel">Ученик</div>
+      <select onchange="setAddLessonStudent(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
+        <option value="">— выбери —</option>
+        ${(data.students||[]).filter(s=>!s.archived).map(s=>`<option value="${s.id}" ${addLessonStudentId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
+      </select>
+      ${student ? `
+        <div class="filelabel">Дни недели</div>
+        <div style="display:flex; gap:0.25rem; margin-bottom:0.375rem;">
+          ${DAY_ORDER.map(dow=>`<span class="mat-pill ${addLessonDays.includes(dow)?'picked':''}" style="flex:1; justify-content:center; padding:0.3rem 0.25rem;" onclick="toggleAddLessonDay(${dow})">${DAY_NAMES[dow]}</span>`).join('')}
+        </div>
+        <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+          <input type="time" id="addLessonTime" value="16:00" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          <input type="date" id="addLessonStart" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        </div>
+        ${(student.subjects||[]).length===0 ? `
+          <div style="font-size:0.78125rem; color:#9BA3AE; margin-bottom:0.5rem;">У этого ученика пока нет тарифов — можно добавить занятие без привязки к тарифу</div>
+        ` : `
+          <select id="addLessonTariff" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+            <option value="">без привязки к тарифу</option>
+            ${student.subjects.map(sub=>`<option value="${sub.id}">${esc(sub.label)} · ${tariffLabel(sub)}</option>`).join('')}
+          </select>
+        `}
+        <button class="btn btn-done" style="width:100%;" onclick="confirmAddLesson()">+ Добавить в расписание</button>
+      ` : ''}
+    </div>
+  </div>`;
+}
+
 function showCalendarView(){
   viewMode = 'calendar';
+  calendarViewDate = new Date();
   closeDrawer();
   render();
 }
 function renderCalendarView(){
   return `
+    ${renderCalendarFilterHTML()}
+    ${renderMonthGrid()}
+    ${renderNextLessonLine()}
+    ${renderWeekGrid()}
+    <div class="filelabel" style="margin-top:1rem;">Действия</div>
+    <button class="btn btn-done" style="width:100%; margin-bottom:0.5rem;" onclick="openAddLessonSheet()">+ Добавить занятие</button>
     ${renderBreakForm()}
+    ${renderAddLessonSheet()}
   `;
 }
 function updateIssuesBadge(){

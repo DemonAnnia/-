@@ -251,7 +251,8 @@ function removeDraftSubject(subId){
 }
 
 // ---- Расписание: панель на карточке ученика (см. calendar-architecture.md, раздел 2) ----
-const DAY_NAMES = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+const DAY_NAMES = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб']; // индекс = dayOfWeek, как в JS Date.getDay() (0=Вс)
+const DAY_ORDER = [1,2,3,4,5,6,0]; // порядок ПОКАЗА кнопок — с понедельника, как принято у нас
 let scheduleAddDays = {}; // studentId -> [dayOfWeek,...]
 
 function toggleScheduleDay(sid, dow){
@@ -275,7 +276,7 @@ function renderScheduleGroups(s){
     groups[key].ruleIds.push(r.id);
   });
   return Object.values(groups).map(g => {
-    const daysLabel = g.days.slice().sort().map(d=>DAY_NAMES[d]).join(', ');
+    const daysLabel = g.days.slice().sort((a,b)=>DAY_ORDER.indexOf(a)-DAY_ORDER.indexOf(b)).map(d=>DAY_NAMES[d]).join(', ');
     const tariff = g.subjectId ? (s.subjects||[]).find(sub=>sub.id===g.subjectId) : null;
     const rangeLabel = g.endDate ? ` · до ${esc(g.endDate)}` : '';
     return `
@@ -570,24 +571,8 @@ function renderStudentSheetInner(d){
         ` : `
           <div class="filelabel" style="margin-top:0.75rem;">Расписание</div>
           ${renderScheduleGroups(savedStudent)}
-          <div style="display:flex; gap:0.25rem; margin-bottom:0.375rem;">
-            ${DAY_NAMES.map((name, dow) => `<span class="mat-pill ${(scheduleAddDays[savedStudent.id]||[]).includes(dow)?'picked':''}" style="flex:1; justify-content:center; padding:0.3rem 0.25rem;" onclick="toggleScheduleDay('${savedStudent.id}',${dow})">${name}</span>`).join('')}
-          </div>
-          <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-            <input type="time" id="scheduletime-${savedStudent.id}" value="16:00" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-            <input type="date" id="schedulestart-${savedStudent.id}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-          </div>
-          ${(savedStudent.subjects||[]).length===0 ? `
-            <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.375rem;" onclick="focusTariffInput('${savedStudent.id}')">Тарифов пока нет — завести</button>
-          ` : `
-            <select id="scheduletariff-${savedStudent.id}" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-              <option value="">без привязки к тарифу</option>
-              ${savedStudent.subjects.map(sub=>`<option value="${sub.id}">${esc(sub.label)} · ${tariffLabel(sub)}</option>`).join('')}
-            </select>
-          `}
-          <button class="btn btn-done" style="width:100%; margin-bottom:0.375rem;" onclick="addScheduleGroup('${savedStudent.id}')">+ Добавить в расписание</button>
           ${renderUpcomingLessons(savedStudent)}
-          <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.5rem; margin-bottom:0.75rem;" onclick="showCalendarView()">📅 Открыть общий календарь</button>
+          <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.5rem; margin-bottom:0.75rem;" onclick="showCalendarView()">📅 Открыть общий календарь — там же можно добавить занятие</button>
 
           <div class="filelabel">Вход для ученика</div>
           ${confirmResetAccess ? `

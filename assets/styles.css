@@ -91,3 +91,18 @@
   .toast.error { background:#FBEEEC; color:#8A2A1E; border:1px solid #F0C4BC; }
   .toast.success { background:#E2EFE6; color:#1F5C3A; border:1px solid #BFE0CC; }
   .toast.info { background:#EAF0F6; color:#1F3A5C; border:1px solid #C7D9EC; }
+
+  /* Календарь: сетка месяца */
+  .cal-grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:0.1875rem; }
+  .cal-grid-header { margin-bottom:0.25rem; }
+  .cal-cell-label { text-align:center; font-size:0.65625rem; color:#9BA3AE; font-weight:600; }
+  .cal-cell { aspect-ratio:1; border-radius:0.375rem; background:#F6F7F5; padding:0.1875rem; display:flex; flex-direction:column; }
+  .cal-cell-empty { background:transparent; }
+  .cal-cell-today { background:#E3E9F1; border:1px solid #2C4A7C; }
+  .cal-daynum { font-size:0.6875rem; color:#5A6472; font-weight:600; }
+  .cal-chips { display:flex; flex-wrap:wrap; gap:0.09375rem; margin-top:auto; align-items:flex-end; }
+  .cal-chip { width:0.375rem; height:0.375rem; border-radius:999px; flex-shrink:0; }
+
+  /* Скрытый, но рабочий скролл — двигается, но полоса не видна */
+  .hide-scrollbar { scrollbar-width:none; -ms-overflow-style:none; }
+  .hide-scrollbar::-webkit-scrollbar { display:none; }
