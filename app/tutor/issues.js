@@ -10,7 +10,7 @@ function showIssuesView(){
 
 function renderIssuesView(){
   const scheduleIssues = getAllUnresolvedQuestions();
-  const noAccountStudents = (data.students||[]).filter(s=>!s.hasAccount);
+  const noAccountStudents = (data.students||[]).filter(s=>!s.hasAccount && !s.archived);
 
   const scheduleBlock = `
     <div class="filelabel" style="margin-top:0.75rem;">Расписание</div>

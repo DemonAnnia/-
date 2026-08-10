@@ -132,7 +132,7 @@ function getAllUnresolvedQuestions(){
   const toD = new Date(); toD.setDate(toD.getDate()+60);
   const toStr = fmtDate(toD);
   let items = [];
-  (data.students||[]).forEach(s => {
+  (data.students||[]).filter(s=>!s.archived).forEach(s => {
     const qs = getUnresolvedQuestions(s.scheduleRules||[], s.scheduleExceptions||[], s.scheduleBreaks||[], today, toStr);
     qs.forEach(q => items.push({ ...q, studentId: s.id, studentName: s.name }));
   });
@@ -158,7 +158,7 @@ function renderCalendarView(){
 function updateIssuesBadge(){
   const el = document.getElementById('issuesBadge');
   if(!el) return;
-  const count = getAllUnresolvedQuestions().length + (data.students||[]).filter(s=>!s.hasAccount).length;
+  const count = getAllUnresolvedQuestions().length + (data.students||[]).filter(s=>!s.hasAccount && !s.archived).length;
   el.textContent = count > 0 ? count : '';
   el.style.display = count > 0 ? 'inline-block' : 'none';
 }

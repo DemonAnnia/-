@@ -590,7 +590,7 @@
         window.loadProfileIntoForm(snap.data());
       } else if (!snap.exists() && window.__firstProfileCheckDone === false) {
         window.__firstProfileCheckDone = true;
-        if (window.openOnboardingSheet) window.openOnboardingSheet();
+        if (window.openOnboardingSheet) window.openOnboardingSheet(true);
       }
     }, (err) => console.error('profile sync error', err));
     startFriendsSync(uid);

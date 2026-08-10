@@ -93,13 +93,32 @@ function render(){
   let subjectFilterHtml = '';
   let extraFiltersHtml = '';
   let addButtonHtml = '';
+  let archivedListHtml = '';
   if(focusedStudentId){
     list = data.students.filter(s => s.id === focusedStudentId);
     backLink = `<button class="hamburger" onclick="showStudentsView()" title="Все ученики" style="margin-bottom:0.75rem;">←</button>`;
   } else {
-    addButtonHtml = `<div style="display:flex; justify-content:flex-end; margin-bottom:0.75rem;">
+    list = list.filter(s => !s.archived);
+    const archivedCount = data.students.filter(s=>s.archived).length;
+
+    addButtonHtml = `<div style="display:flex; justify-content:flex-end; gap:0.375rem; margin-bottom:0.75rem; flex-wrap:wrap;">
+      <button class="mat-pill ${reorderMode?'picked':''}" onclick="toggleReorderMode()">↕️ Переставить</button>
+      ${archivedCount ? `<button class="mat-pill ${showArchivedStudents?'picked':''}" onclick="toggleShowArchivedStudents()">🗄 Архив (${archivedCount})</button>` : ''}
       <button class="btn btn-done" onclick="openAddStudentSheet()">+ Добавить ученика</button>
     </div>`;
+
+    if(showArchivedStudents){
+      const archivedList = data.students.filter(s=>s.archived);
+      archivedListHtml = `
+        <div class="filelabel">В архиве</div>
+        ${archivedList.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.5rem 0;">Архив пуст</div>' : archivedList.map(s=>`
+          <div class="filerow">
+            <span>🗄</span>
+            <span style="flex:1; font-size:0.8125rem;">${esc(s.name)}</span>
+            <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; cursor:pointer; text-decoration:underline;" onclick="restoreStudentFromArchive('${s.id}')">вернуть</button>
+          </div>`).join('')}
+      `;
+    }
 
     if(profileSubjects.length > 1){
       const matches = (s, subj) => (s.subjects||[]).length===0 || (s.subjects||[]).some(sub => sub.subject === subj);
@@ -137,8 +156,8 @@ function render(){
         ` : ''}
       </div>`;
   }
-  wrap.innerHTML = backLink + addButtonHtml + subjectFilterHtml + extraFiltersHtml
-    + (list.length ? list.map(cardHTML).join('') : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`)
+  wrap.innerHTML = backLink + addButtonHtml + archivedListHtml + subjectFilterHtml + extraFiltersHtml
+    + (list.length ? list.map((s,i)=>cardHTML(s, i===0, i===list.length-1)).join('') : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`)
     + renderStudentSheet();
 }
 
