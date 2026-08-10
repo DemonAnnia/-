@@ -11,6 +11,31 @@ const stubCard = (icon, text) => `<div class="card"><div class="body" style="tex
   <div style="font-size:0.78125rem;">Скоро здесь что-то появится</div>
 </div></div>`;
 
+function renderNextLessonWidget(){
+  const sched = window.__scheduleData || { rules:[], breaks:[], exceptions:[] };
+  const now = new Date();
+  const todayStr = fmtDate(now);
+  const farStr = fmtDate(new Date(now.getTime() + 60*86400000));
+  const lessons = getLessons(sched.rules, sched.exceptions, sched.breaks, todayStr, farStr).filter(l=>l.status!=='skipped');
+  const upcoming = lessons.find(l => {
+    const dt = new Date(l.date + 'T' + (l.time||'00:00'));
+    return dt.getTime() >= now.getTime() - 30*60000;
+  });
+  if(!upcoming){
+    return `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin-bottom:0.75rem;">🕐 Занятий пока не запланировано</div>`;
+  }
+  const dt = new Date(upcoming.date + 'T' + (upcoming.time||'00:00'));
+  const diffHrs = (dt.getTime() - now.getTime())/3600000;
+  let whenLabel;
+  if(diffHrs < 0) whenLabel = 'сейчас идёт';
+  else if(diffHrs < 1) whenLabel = `через ${Math.max(1,Math.round((dt.getTime()-now.getTime())/60000))} мин`;
+  else if(diffHrs < 24) whenLabel = `через ${Math.round(diffHrs)} ч`;
+  else whenLabel = `через ${Math.round(diffHrs/24)} дн`;
+  return `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#EAF0F6; color:#2C4A7C; font-size:0.8125rem; margin-bottom:0.75rem;">
+    ⏰ <b>${esc(whenLabel)}</b> — ${esc(fmtDateRu(upcoming.date))}, ${esc(upcoming.time)}${upcoming.status==='pending'?' <span style="color:#B5651D;">(уточняется)</span>':''}
+  </div>`;
+}
+
 function renderLessonSection(student, materials, profile){
   const allFiles = (materials || []).filter(f => !f.archived).filter(f => !activeSubjectFilter || f.subject === activeSubjectFilter);
   const tutorName = (profile && profile.name) ? esc(profile.name) : null;
@@ -18,7 +43,7 @@ function renderLessonSection(student, materials, profile){
     ? `Здесь появятся материалы, как только ${tutorName} их добавит`
     : `Здесь появятся материалы, как только их добавит твой репетитор`;
   return `
-    <div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin-bottom:0.75rem;">🕐 Следующее занятие<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>
+    ${renderNextLessonWidget()}
     <div class="card"><div class="body">
       ${student.format!=='Очно' ? `
         <div class="row" style="margin-bottom:0.5rem;">

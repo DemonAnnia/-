@@ -498,6 +498,11 @@
         if (st) st.scheduleExceptions = snap.docs.map(d => d.data());
         render();
       }, () => {});
+      onSnapshot(collection(db, 'users', uid, 'students', s.id, 'scheduleNotes'), (snap) => {
+        const st = data.students.find(x => x.id === s.id);
+        if (st) st.scheduleNotesList = snap.docs.map(d => ({ date: d.id, ...d.data() }));
+        render();
+      }, () => {});
     });
   }
 

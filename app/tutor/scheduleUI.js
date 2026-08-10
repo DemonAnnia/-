@@ -14,7 +14,7 @@ function renderLessonRow(s, l){
   return `
     <div class="filerow" style="flex-wrap:wrap;">
       <span>📅</span>
-      <span style="flex:1; font-size:0.8125rem;">${esc(l.date)} · ${esc(l.time)} — ${statusLabel(l)}</span>
+      <span style="flex:1; font-size:0.8125rem;">${esc(fmtDateRu(l.date))} · ${esc(l.time)} — ${statusLabel(l)}</span>
       ${l.status !== 'skipped' ? `
         <button class="iconbtn" onclick="openRescheduleForm('${s.id}','${l.date}')" title="Перенести">↪️</button>
         <button class="iconbtn" onclick="cancelLessonDate('${s.id}','${l.date}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;" title="Отменить">✕</button>
@@ -388,7 +388,7 @@ function renderDaySheetInner(){
 
   if(!daySheetStudentId){
     return `
-      <div class="filelabel">Занятия ${esc(daySheetDate)}</div>
+      <div class="filelabel">Занятия ${esc(fmtDateRu(daySheetDate))}</div>
       ${dayLessons.map(l => `
         <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-bottom:0.375rem; justify-content:flex-start;" onclick="openLessonDetail('${l.studentId}')">
           <span style="width:0.5rem;height:0.5rem;border-radius:999px;background:${l.accent.ink};margin-right:0.5rem; flex-shrink:0;"></span>
@@ -454,7 +454,7 @@ function renderDaySheet(){
   <div class="mat-sheet-backdrop" onclick="closeDaySheet()"></div>
   <div class="mat-sheet">
     <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
-      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">📅 ${esc(daySheetDate||'')}</div>
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">📅 ${esc(fmtDateRu(daySheetDate)||'')}</div>
       <button class="hamburger" onclick="closeDaySheet()">✕</button>
     </div>
     <div id="daySheetInner" style="padding:0 1rem 1.5rem;">${renderDaySheetInner()}</div>
@@ -464,10 +464,12 @@ function renderDaySheet(){
 // ---- «Добавить занятие»: отдельный экран, начинается с выбора ученика ----
 let addLessonSheetOpen = false;
 let addLessonStudentId = null;
-let addLessonDays = [];
+let addLessonRepeat = 'none'; // 'none' | 'weekly' | 'custom'
+let addLessonDays = []; // используется только при repeat='custom'
 function openAddLessonSheet(){
   addLessonSheetOpen = true;
   addLessonStudentId = null;
+  addLessonRepeat = 'none';
   addLessonDays = [];
   render();
 }
@@ -485,6 +487,10 @@ function setAddLessonStudent(id){
   addLessonDays = [];
   refreshAddLessonSheet();
 }
+function setAddLessonRepeat(v){
+  addLessonRepeat = v;
+  refreshAddLessonSheet();
+}
 function toggleAddLessonDay(dow){
   const i = addLessonDays.indexOf(dow);
   if(i>=0) addLessonDays.splice(i,1); else addLessonDays.push(dow);
@@ -492,21 +498,33 @@ function toggleAddLessonDay(dow){
 }
 async function confirmAddLesson(){
   if(!addLessonStudentId){ showToast('Выбери ученика'); return; }
-  if(addLessonDays.length===0){ showToast('Выбери хотя бы один день недели'); return; }
   const time = document.getElementById('addLessonTime').value;
   if(!time){ showToast('Укажи время'); return; }
-  const startEl = document.getElementById('addLessonStart');
-  const startDate = startEl.value || fmtDate(new Date());
   const tariffEl = document.getElementById('addLessonTariff');
   const subjectId = tariffEl ? (tariffEl.value || null) : null;
-  addLessonDays.forEach(dow => {
-    if(window.__fbSaveRule) window.__fbSaveRule(addLessonStudentId, { dayOfWeek: dow, time, startDate, endDate: null, subjectId });
-  });
-  showToast('Добавлено в расписание', 'success', 3000);
+
+  if(addLessonRepeat === 'custom'){
+    if(addLessonDays.length===0){ showToast('Выбери хотя бы один день недели'); return; }
+    const startEl = document.getElementById('addLessonStart');
+    const startDate = startEl.value || fmtDate(new Date());
+    addLessonDays.forEach(dow => {
+      if(window.__fbSaveRule) window.__fbSaveRule(addLessonStudentId, { dayOfWeek: dow, time, startDate, endDate: null, subjectId });
+    });
+    showToast('Добавлено в расписание', 'success', 3000);
+  } else {
+    const dateEl = document.getElementById('addLessonDate');
+    const dateStr = dateEl.value;
+    if(!dateStr){ showToast('Укажи дату'); return; }
+    const dow = new Date(dateStr + 'T00:00:00').getDay();
+    const endDate = addLessonRepeat === 'none' ? dateStr : null; // 'none' — ровно один день, 'weekly' — без конца
+    if(window.__fbSaveRule) window.__fbSaveRule(addLessonStudentId, { dayOfWeek: dow, time, startDate: dateStr, endDate, subjectId });
+    showToast(addLessonRepeat === 'none' ? 'Занятие добавлено' : 'Добавлено в расписание (каждую неделю)', 'success', 3000);
+  }
   closeAddLessonSheet();
 }
 function renderAddLessonSheetInner(){
   const student = data.students.find(s=>s.id===addLessonStudentId);
+  const todayStr = fmtDate(new Date());
   return `
       <div class="filelabel">Ученик</div>
       <select onchange="setAddLessonStudent(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
@@ -514,14 +532,27 @@ function renderAddLessonSheetInner(){
         ${(data.students||[]).filter(s=>!s.archived).map(s=>`<option value="${s.id}" ${addLessonStudentId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
       </select>
       ${student ? `
-        <div class="filelabel">Дни недели</div>
-        <div style="display:flex; gap:0.25rem; margin-bottom:0.375rem;">
-          ${DAY_ORDER.map(dow=>`<span class="mat-pill ${addLessonDays.includes(dow)?'picked':''}" style="flex:1; justify-content:center; padding:0.3rem 0.25rem;" onclick="toggleAddLessonDay(${dow})">${DAY_NAMES[dow]}</span>`).join('')}
-        </div>
-        <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+        <div class="filelabel">Дата и время</div>
+        <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem;">
+          ${addLessonRepeat === 'custom'
+            ? `<input type="date" id="addLessonStart" value="${todayStr}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">`
+            : `<input type="date" id="addLessonDate" value="${todayStr}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">`}
           <input type="time" id="addLessonTime" value="16:00" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-          <input type="date" id="addLessonStart" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
         </div>
+
+        <div class="filelabel">Повторение</div>
+        <select onchange="setAddLessonRepeat(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+          <option value="none" ${addLessonRepeat==='none'?'selected':''}>Не повторяется — только эта дата</option>
+          <option value="weekly" ${addLessonRepeat==='weekly'?'selected':''}>Каждую неделю, в этот же день</option>
+          <option value="custom" ${addLessonRepeat==='custom'?'selected':''}>Каждую неделю, выбрать дни</option>
+        </select>
+
+        ${addLessonRepeat === 'custom' ? `
+          <div style="display:flex; gap:0.25rem; margin-bottom:0.5rem;">
+            ${DAY_ORDER.map(dow=>`<span class="mat-pill ${addLessonDays.includes(dow)?'picked':''}" style="flex:1; justify-content:center; padding:0.3rem 0.25rem;" onclick="toggleAddLessonDay(${dow})">${DAY_NAMES[dow]}</span>`).join('')}
+          </div>
+        ` : ''}
+
         ${(student.subjects||[]).length===0 ? `
           <div style="font-size:0.78125rem; color:#9BA3AE; margin-bottom:0.5rem;">У этого ученика пока нет тарифов — можно добавить занятие без привязки к тарифу</div>
         ` : `
@@ -530,7 +561,7 @@ function renderAddLessonSheetInner(){
             ${student.subjects.map(sub=>`<option value="${sub.id}">${esc(sub.label)} · ${tariffLabel(sub)}</option>`).join('')}
           </select>
         `}
-        <button class="btn btn-done" style="width:100%;" onclick="confirmAddLesson()">+ Добавить в расписание</button>
+        <button class="btn btn-done" style="width:100%;" onclick="confirmAddLesson()">+ Добавить</button>
       ` : ''}
   `;
 }

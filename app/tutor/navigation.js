@@ -51,6 +51,13 @@ function updatePageHeader(){
 }
 
 function render(){
+  if(viewMode !== 'students' && typeof studentSheetOpen !== 'undefined' && studentSheetOpen){
+    // ушли с экрана "ученики" без явного сохранения/выхода — закрываем черновик без сохранения
+    studentSheetOpen = false;
+    editingStudentId = null;
+    editingStudentDraft = null;
+    isNewStudentDraft = false;
+  }
   renderDrawerLists();
   applyTutorTheme();
   updatePageHeader();
@@ -156,8 +163,10 @@ function render(){
         ` : ''}
       </div>`;
   }
+  const focusedDetailHtml = (focusedStudentId && window.renderStudentFocusedDetail) ? renderStudentFocusedDetail(data.students.find(s=>s.id===focusedStudentId)) : '';
   wrap.innerHTML = backLink + addButtonHtml + archivedListHtml + subjectFilterHtml + extraFiltersHtml
     + (list.length ? list.map((s,i)=>cardHTML(s, i===0, i===list.length-1)).join('') : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`)
+    + focusedDetailHtml
     + renderStudentSheet();
 }
 

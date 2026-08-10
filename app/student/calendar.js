@@ -9,6 +9,14 @@ function fmtDate(d){
   const day = String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${day}`;
 }
+/** ISO-строку "2026-08-15" превращает в привычный вид "15.08.2026" — только для отображения. */
+function fmtDateRu(dateStr){
+  if(!dateStr) return '';
+  const parts = dateStr.split('-');
+  if(parts.length !== 3) return dateStr;
+  const [y,m,d] = parts;
+  return `${d}.${m}.${y}`;
+}
 
 /**
  * rules:      [{ id, dayOfWeek(0-6), time:"16:00", startDate:"YYYY-MM-DD", endDate: string|null, subjectId }]

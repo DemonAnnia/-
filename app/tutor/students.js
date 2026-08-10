@@ -18,7 +18,7 @@ async function generateInviteCode(studentId){
     const s = data.students.find(x=>x.id===studentId);
     s.inviteCode = code;
     save();
-    if(studentSheetOpen) refreshStudentSheet();
+    if(studentSheetOpen) refreshStudentSheet(); else render();
   } else {
     showToast('Не получилось создать код, попробуй ещё раз');
   }
@@ -29,7 +29,7 @@ async function revokeInviteCode(studentId){
   if(window.__fbRevokeLink) await window.__fbRevokeLink(s.inviteCode);
   delete s.inviteCode;
   save();
-  if(studentSheetOpen) refreshStudentSheet();
+  if(studentSheetOpen) refreshStudentSheet(); else render();
 }
 let confirmResetAccess = false;
 function requestResetAccess(){
@@ -265,6 +265,8 @@ function focusTariffInput(sid){
   if(el){ el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus(); }
 }
 function scheduleGroupKey(r){ return `${r.time}|${r.subjectId||''}|${r.startDate}|${r.endDate||''}`; }
+let editingScheduleGroupKey = null;
+let editScheduleDays = [];
 function renderScheduleGroups(s){
   const rules = s.scheduleRules || [];
   if(rules.length === 0) return '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>';
@@ -276,16 +278,81 @@ function renderScheduleGroups(s){
     groups[key].ruleIds.push(r.id);
   });
   return Object.values(groups).map(g => {
+    const key = scheduleGroupKey(g);
     const daysLabel = g.days.slice().sort((a,b)=>DAY_ORDER.indexOf(a)-DAY_ORDER.indexOf(b)).map(d=>DAY_NAMES[d]).join(', ');
     const tariff = g.subjectId ? (s.subjects||[]).find(sub=>sub.id===g.subjectId) : null;
-    const rangeLabel = g.endDate ? ` · до ${esc(g.endDate)}` : '';
+    const rangeLabel = g.endDate ? ` · до ${esc(fmtDateRu(g.endDate))}` : '';
+    const isEditing = editingScheduleGroupKey === key;
     return `
-      <div class="filerow">
+      <div class="filerow" style="cursor:pointer;" onclick="${isEditing?'':`openScheduleGroupEdit('${s.id}','${key}')`}">
         <span>📅</span>
         <span style="flex:1; font-size:0.8125rem;">${esc(daysLabel)} · ${esc(g.time)}${tariff ? ` · ${esc(tariff.label)}` : ''}${rangeLabel}</span>
-        <button class="iconbtn" onclick="deleteScheduleGroup('${s.id}','${g.ruleIds.join(',')}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
-      </div>`;
+        <button class="iconbtn" onclick="event.stopPropagation(); deleteScheduleGroup('${s.id}','${g.ruleIds.join(',')}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+      </div>
+      ${isEditing ? renderScheduleGroupEditForm(s, g) : ''}`;
   }).join('');
+}
+function openScheduleGroupEdit(sid, key){
+  editingScheduleGroupKey = key;
+  const student = data.students.find(x=>x.id===sid);
+  if(student){
+    const rules = student.scheduleRules || [];
+    const matching = rules.filter(r => scheduleGroupKey(r) === key);
+    editScheduleDays = matching.map(r=>r.dayOfWeek);
+  }
+  if(studentSheetOpen) refreshStudentSheet(); else render();
+}
+function cancelScheduleGroupEdit(){
+  editingScheduleGroupKey = null;
+  editScheduleDays = [];
+  if(studentSheetOpen) refreshStudentSheet(); else render();
+}
+function toggleEditScheduleDay(dow){
+  const i = editScheduleDays.indexOf(dow);
+  if(i>=0) editScheduleDays.splice(i,1); else editScheduleDays.push(dow);
+  if(studentSheetOpen) refreshStudentSheet(); else render();
+}
+function renderScheduleGroupEditForm(s, g){
+  return `
+    <div style="padding:0.625rem; background:#F6F7F5; border-radius:0.625rem; margin:0.25rem 0 0.5rem;">
+      <div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">Дни недели</div>
+      <div style="display:flex; gap:0.25rem; margin-bottom:0.375rem;">
+        ${DAY_ORDER.map(dow=>`<span class="mat-pill ${editScheduleDays.includes(dow)?'picked':''}" style="flex:1; justify-content:center; padding:0.3rem 0.25rem;" onclick="toggleEditScheduleDay(${dow})">${DAY_NAMES[dow]}</span>`).join('')}
+      </div>
+      <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+        <input type="time" id="editScheduleTime" value="${esc(g.time)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <input type="date" id="editScheduleStart" value="${esc(g.startDate)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+      </div>
+      ${(s.subjects||[]).length ? `
+        <select id="editScheduleTariff" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+          <option value="">без привязки к тарифу</option>
+          ${s.subjects.map(sub=>`<option value="${sub.id}" ${g.subjectId===sub.id?'selected':''}>${esc(sub.label)} · ${tariffLabel(sub)}</option>`).join('')}
+        </select>
+      ` : ''}
+      <div style="display:flex; gap:0.375rem;">
+        <button class="btn btn-done" style="flex:1;" onclick="saveScheduleGroupEdit('${s.id}')">✓ Сохранить</button>
+        <button class="btn btn-off" style="flex:1;" onclick="cancelScheduleGroupEdit()">Отмена</button>
+      </div>
+    </div>`;
+}
+function saveScheduleGroupEdit(sid){
+  if(editScheduleDays.length===0){ showToast('Выбери хотя бы один день недели'); return; }
+  const time = document.getElementById('editScheduleTime').value;
+  if(!time){ showToast('Укажи время'); return; }
+  const startDate = document.getElementById('editScheduleStart').value || fmtDate(new Date());
+  const tariffEl = document.getElementById('editScheduleTariff');
+  const subjectId = tariffEl ? (tariffEl.value || null) : null;
+  const student = data.students.find(x=>x.id===sid);
+  const rules = student ? (student.scheduleRules || []) : [];
+  const oldIds = rules.filter(r => scheduleGroupKey(r) === editingScheduleGroupKey).map(r=>r.id);
+  oldIds.forEach(id => { if(window.__fbDeleteRule) window.__fbDeleteRule(sid, id); });
+  editScheduleDays.forEach(dow => {
+    if(window.__fbSaveRule) window.__fbSaveRule(sid, { dayOfWeek: dow, time, startDate, endDate: null, subjectId });
+  });
+  showToast('Расписание обновлено', 'success', 3000);
+  editingScheduleGroupKey = null;
+  editScheduleDays = [];
+  if(studentSheetOpen) refreshStudentSheet(); else render();
 }
 function addScheduleGroup(sid){
   const days = scheduleAddDays[sid] || [];
@@ -571,7 +638,6 @@ function renderStudentSheetInner(d){
         ` : `
           <div class="filelabel" style="margin-top:0.75rem;">Расписание</div>
           ${renderScheduleGroups(savedStudent)}
-          ${renderUpcomingLessons(savedStudent)}
           <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.5rem; margin-bottom:0.75rem;" onclick="showCalendarView()">📅 Открыть общий календарь — там же можно добавить занятие</button>
 
           <div class="filelabel">Вход для ученика</div>
@@ -595,8 +661,6 @@ function renderStudentSheetInner(d){
               <button class="iconbtn" onclick="revokeInviteCode('${savedStudent.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
             </div>` : `
             <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.625rem;" onclick="generateInviteCode('${savedStudent.id}')">🔑 Создать код для входа</button>`}
-
-          <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.375rem;" onclick="showMaterialsView('${savedStudent.id}')">📚 Материалы для ${esc(savedStudent.name)}</button>
         `}
 
         <div style="display:flex; gap:0.375rem; margin-top:1rem;">
@@ -604,8 +668,10 @@ function renderStudentSheetInner(d){
           <button class="btn btn-off" style="flex:1;" onclick="requestCloseStudentSheet()">Выйти</button>
         </div>
         ${!isNewStudentDraft ? `
-          <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.5rem;" onclick="archiveStudent('${editingStudentId}')">🗄 Отправить в архив (не занимаемся сейчас)</button>
-          <button class="delbtn" onclick="deleteStudent('${editingStudentId}')">🗑 Удалить ученика совсем</button>
+          <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
+            <button class="btn" style="flex:1; background:#F1F3F5; color:#3A4250;" onclick="archiveStudent('${editingStudentId}')">🗄 Архив</button>
+            <button class="btn" style="flex:1; background:#FBEEEC; color:#C0392B;" onclick="deleteStudent('${editingStudentId}')">🗑 Удалить</button>
+          </div>
         ` : ''}
     `;
 }
@@ -621,6 +687,8 @@ function renderOverviewView(){
   const subjectsLine = profileSubjects.length ? profileSubjects.join(' · ') : '';
 
   return `
+    ${window.renderNextLessonLine ? renderNextLessonLine() : ''}
+    ${window.renderWeekGrid ? renderWeekGrid() : ''}
     <div class="matcard">
       <div class="filelabel">Сводка</div>
       <div style="font-size:0.9375rem; font-weight:600; margin-bottom:0.25rem;">👥 ${students.length} учеников</div>
@@ -645,6 +713,39 @@ function renderOverviewView(){
         <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showFriendsView()">🤝 Друзья</button>
         <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showSettingsView()">⚙️ Настройки</button>
       </div>
+    </div>
+  `;
+}
+
+// ---- Полноэкранная карточка одного ученика: материалы + расписание + журнал занятий ----
+function renderStudentFocusedDetail(s){
+  if(!s) return '';
+  const notesList = (s.scheduleNotesList || [])
+    .filter(n => (n.topic||'').trim() || (n.description||'').trim() || (n.homework||'').trim())
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  return `
+    <div class="matcard" style="margin-top:0.75rem;">
+      <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250;" onclick="showMaterialsView('${s.id}')">📚 Материалы для ${esc(s.name)}</button>
+    </div>
+
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">Расписание</div>
+      ${renderScheduleGroups(s)}
+      ${renderUpcomingLessons(s)}
+      <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.5rem;" onclick="showCalendarView()">📅 Открыть общий календарь</button>
+    </div>
+
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">Журнал занятий</div>
+      ${notesList.length === 0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0;">Пока пусто — записи появятся, когда заполнишь тему/описание/домашку в подробностях занятия</div>' : notesList.map(n => `
+        <div style="padding:0.5rem 0; border-bottom:1px solid #EDEFEC;">
+          <div style="font-size:0.75rem; color:#9BA3AE; margin-bottom:0.125rem;">${esc(fmtDateRu(n.date))}</div>
+          ${n.topic ? `<div style="font-size:0.8125rem; font-weight:600;">${esc(n.topic)}</div>` : ''}
+          ${n.description ? `<div style="font-size:0.78125rem; color:#5A6472; margin-top:0.125rem;">${esc(n.description)}</div>` : ''}
+          ${n.homework ? `<div style="font-size:0.78125rem; color:#2C4A7C; margin-top:0.125rem;">📝 ДЗ: ${esc(n.homework)}</div>` : ''}
+        </div>
+      `).join('')}
     </div>
   `;
 }

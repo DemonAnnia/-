@@ -16,7 +16,7 @@ function renderIssuesView(){
     <div class="filelabel" style="margin-top:0.75rem;">Расписание</div>
     ${scheduleIssues.length === 0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.5rem 0;">Тут пусто</div>' : scheduleIssues.map(q => `
       <div class="matcard">
-        <div style="font-size:0.8125rem;"><b>${esc(q.studentName)}</b> · ${esc(q.date)} ${esc(q.time)}${q.breakLabel?` · ${esc(q.breakLabel)}`:''}</div>
+        <div style="font-size:0.8125rem;"><b>${esc(q.studentName)}</b> · ${esc(fmtDateRu(q.date))} ${esc(q.time)}${q.breakLabel?` · ${esc(q.breakLabel)}`:''}</div>
         <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
           <button class="btn btn-done" style="flex:1;" onclick="resolveBreakQuestion('${q.studentId}','${q.date}',true)">Занятие было</button>
           <button class="btn btn-off" style="flex:1;" onclick="resolveBreakQuestion('${q.studentId}','${q.date}',false)">Не было</button>
