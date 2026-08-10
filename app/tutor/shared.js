@@ -213,6 +213,8 @@ const CONTACT_TYPES = {
   email:    { label:'Почта',    icon:'✉️', placeholder:'email', build: v => `mailto:${v}` },
 };
 function contactLink(c){ const t = CONTACT_TYPES[c.type]; return (t && c.value) ? t.build(c.value) : '#'; }
+function contactLabel(c){ const t = CONTACT_TYPES[c.type]; return t ? t.label : 'контакт'; }
+function contactIcon(c){ const t = CONTACT_TYPES[c.type]; return t ? t.icon : '💬'; }
 
 const ALLOWED_EXT = ['pdf','doc','docx','xls','xlsx','csv','ppt','pptx','png','jpg','jpeg','gif','webp','txt','zip','rar','py'];
 const VIDEO_EXT = ['mp4','mov','avi','webm','mkv'];

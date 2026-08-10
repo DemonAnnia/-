@@ -206,6 +206,11 @@ window.refreshSettingsPushStatus = function(){
   const el = document.getElementById('pushSettingsCard');
   if(el) el.innerHTML = renderPushSettingsInner();
 };
+let accountPanelOpen = false;
+function toggleAccountPanel(){
+  accountPanelOpen = !accountPanelOpen;
+  renderSettingsView();
+}
 function toggleDataPanel(){
   dataPanelOpen = !dataPanelOpen;
   renderSettingsView();
@@ -235,7 +240,7 @@ function renderSettingsView(){
         <a href="#" onclick="toggleAccountPanel();return false;" style="font-size:0.78125rem; color:#5A6472;">Сменить</a>
       </div>
       <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Смена пароля для входа в этот кабинет.</div>
-      <div id="accountPanel" style="display:none; margin-top:0.5rem;">
+      <div id="accountPanel" style="display:${accountPanelOpen?'block':'none'}; margin-top:0.5rem;">
         <div style="font-size:0.75rem; color:#5A6472; margin-bottom:0.5rem;">Чтобы сменить пароль, подтверди текущим</div>
         <input id="accCurPass" type="password" placeholder="текущий пароль" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
         <input id="accNewPass" type="password" placeholder="новый пароль (мин. 6 символов)" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
