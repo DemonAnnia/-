@@ -3,7 +3,12 @@
 // всегда вычисляется из правил (scheduleRules) + каникул (scheduleBreaks) +
 // исключений (scheduleExceptions). См. calendar-architecture.md.
 
-function fmtDate(d){ return d.toISOString().slice(0,10); }
+function fmtDate(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 
 /**
  * rules:      [{ id, dayOfWeek(0-6), time:"16:00", startDate:"YYYY-MM-DD", endDate: string|null, subjectId }]

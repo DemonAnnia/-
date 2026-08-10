@@ -211,7 +211,7 @@ function renderMonthGrid(){
       <div class="cal-cell ${isToday?'cal-cell-today':''}" ${dayLessons.length?`onclick="showDayLessons('${dateStr}')"`:''}>
         <div class="cal-daynum">${day}</div>
         <div class="cal-chips">
-          ${dayLessons.slice(0,4).map(l=>`<span class="cal-chip" style="background:${l.accent.ink};" title="${esc(l.studentName)} · ${esc(l.time)}"></span>`).join('')}
+          ${dayLessons.slice(0,4).map(l=>`<span class="cal-chip" style="background:${l.accent.ink};" title="${esc(l.studentName)} · ${esc(l.time)}">${esc((l.studentName||'?').trim().charAt(0).toUpperCase())}</span>`).join('')}
           ${dayLessons.length>4 ? `<span style="font-size:0.5rem;color:#9BA3AE;">+${dayLessons.length-4}</span>` : ''}
         </div>
       </div>`);
@@ -310,15 +310,20 @@ function closeAddLessonSheet(){
   addLessonSheetOpen = false;
   render();
 }
+function refreshAddLessonSheet(){
+  if(!addLessonSheetOpen) return;
+  const el = document.getElementById('addLessonSheetInner');
+  if(el) el.innerHTML = renderAddLessonSheetInner();
+}
 function setAddLessonStudent(id){
   addLessonStudentId = id || null;
   addLessonDays = [];
-  render();
+  refreshAddLessonSheet();
 }
 function toggleAddLessonDay(dow){
   const i = addLessonDays.indexOf(dow);
   if(i>=0) addLessonDays.splice(i,1); else addLessonDays.push(dow);
-  render();
+  refreshAddLessonSheet();
 }
 async function confirmAddLesson(){
   if(!addLessonStudentId){ showToast('Выбери ученика'); return; }
@@ -335,17 +340,9 @@ async function confirmAddLesson(){
   showToast('Добавлено в расписание', 'success', 3000);
   closeAddLessonSheet();
 }
-function renderAddLessonSheet(){
-  if(!addLessonSheetOpen) return '';
+function renderAddLessonSheetInner(){
   const student = data.students.find(s=>s.id===addLessonStudentId);
   return `
-  <div class="mat-sheet-backdrop" onclick="closeAddLessonSheet()"></div>
-  <div class="mat-sheet">
-    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
-      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">➕ Добавить занятие</div>
-      <button class="hamburger" onclick="closeAddLessonSheet()">✕</button>
-    </div>
-    <div style="padding:0 1rem 1.5rem;">
       <div class="filelabel">Ученик</div>
       <select onchange="setAddLessonStudent(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
         <option value="">— выбери —</option>
@@ -370,7 +367,18 @@ function renderAddLessonSheet(){
         `}
         <button class="btn btn-done" style="width:100%;" onclick="confirmAddLesson()">+ Добавить в расписание</button>
       ` : ''}
+  `;
+}
+function renderAddLessonSheet(){
+  if(!addLessonSheetOpen) return '';
+  return `
+  <div class="mat-sheet-backdrop" onclick="closeAddLessonSheet()"></div>
+  <div class="mat-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">➕ Добавить занятие</div>
+      <button class="hamburger" onclick="closeAddLessonSheet()">✕</button>
     </div>
+    <div id="addLessonSheetInner" style="padding:0 1rem 1.5rem;">${renderAddLessonSheetInner()}</div>
   </div>`;
 }
 
@@ -383,8 +391,8 @@ function showCalendarView(){
 function renderCalendarView(){
   return `
     ${renderCalendarFilterHTML()}
-    ${renderMonthGrid()}
     ${renderNextLessonLine()}
+    ${renderMonthGrid()}
     ${renderWeekGrid()}
     <div class="filelabel" style="margin-top:1rem;">Действия</div>
     <button class="btn btn-done" style="width:100%; margin-bottom:0.5rem;" onclick="openAddLessonSheet()">+ Добавить занятие</button>
