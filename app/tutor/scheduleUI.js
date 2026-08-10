@@ -292,8 +292,173 @@ function renderWeekGrid(){
   `;
 }
 
+// ---- Подробности по занятию: клик по чипу/строке в календаре ----
+let daySheetOpen = false;
+let daySheetDate = null;
+let daySheetStudentId = null; // null = список занятий этого дня; иначе — карточка конкретного занятия
+let lessonNotesDraft = null;
+let showRescheduleInDaySheet = false;
+
 function showDayLessons(dateStr){
-  showToast('Подробности по дню (материалы/тема/домашка) — в следующем шаге', 'info', 4000);
+  const lessons = getFilteredLessonsInRange(dateStr, dateStr);
+  if(lessons.length === 0) return;
+  daySheetDate = dateStr;
+  daySheetOpen = true;
+  showRescheduleInDaySheet = false;
+  lessonNotesDraft = { topic:'', description:'', homework:'', materialIds:[] };
+  daySheetStudentId = lessons.length === 1 ? lessons[0].studentId : null;
+  render(); // создаёт обёртку — единственный раз, при первом открытии
+  if(daySheetStudentId) loadLessonNotesInto(daySheetStudentId);
+}
+function closeDaySheet(){
+  daySheetOpen = false;
+  daySheetDate = null;
+  daySheetStudentId = null;
+  lessonNotesDraft = null;
+  showRescheduleInDaySheet = false;
+  render();
+}
+function backToDayList(){
+  daySheetStudentId = null;
+  lessonNotesDraft = null;
+  showRescheduleInDaySheet = false;
+  refreshDaySheet();
+}
+function openLessonDetail(studentId){
+  // вызывается из уже открытой панели (список занятий этого дня) — обёртка уже существует, полный render() не нужен
+  daySheetStudentId = studentId;
+  showRescheduleInDaySheet = false;
+  lessonNotesDraft = { topic:'', description:'', homework:'', materialIds:[] };
+  refreshDaySheet();
+  loadLessonNotesInto(studentId);
+}
+async function loadLessonNotesInto(studentId){
+  if(window.__fbLoadLessonNotes){
+    const existing = await window.__fbLoadLessonNotes(studentId, daySheetDate);
+    if(existing && daySheetStudentId === studentId){
+      lessonNotesDraft = { topic: existing.topic||'', description: existing.description||'', homework: existing.homework||'', materialIds: existing.materialIds||[] };
+      refreshDaySheet();
+    }
+  }
+}
+function refreshDaySheet(){
+  if(!daySheetOpen) return;
+  const el = document.getElementById('daySheetInner');
+  if(el) el.innerHTML = renderDaySheetInner();
+}
+function toggleLessonMaterial(materialId, checked){
+  if(checked){ if(!lessonNotesDraft.materialIds.includes(materialId)) lessonNotesDraft.materialIds.push(materialId); }
+  else { lessonNotesDraft.materialIds = lessonNotesDraft.materialIds.filter(id=>id!==materialId); }
+}
+async function saveLessonNotes(){
+  const topicEl = document.getElementById('lessonTopicInput');
+  const descEl = document.getElementById('lessonDescInput');
+  const hwEl = document.getElementById('lessonHomeworkInput');
+  if(topicEl) lessonNotesDraft.topic = topicEl.value;
+  if(descEl) lessonNotesDraft.description = descEl.value;
+  if(hwEl) lessonNotesDraft.homework = hwEl.value;
+  if(window.__fbSaveLessonNotes) await window.__fbSaveLessonNotes(daySheetStudentId, daySheetDate, lessonNotesDraft);
+  showToast('Сохранено', 'success', 3000);
+}
+function openRescheduleFromDaySheet(){
+  showRescheduleInDaySheet = true;
+  refreshDaySheet();
+}
+function cancelRescheduleFromDaySheet(){
+  showRescheduleInDaySheet = false;
+  refreshDaySheet();
+}
+function confirmRescheduleFromDaySheet(){
+  const newDate = document.getElementById('daySheetReschedDate').value;
+  const newTime = document.getElementById('daySheetReschedTime').value;
+  if(!newDate || !newTime){ showToast('Укажи новую дату и время'); return; }
+  if(window.__fbSaveException) window.__fbSaveException(daySheetStudentId, daySheetDate, { type:'moved', newDate, newTime });
+  showToast('Перенесено', 'success', 3000);
+  closeDaySheet();
+}
+function cancelLessonFromDaySheet(){
+  if(window.__fbSaveException) window.__fbSaveException(daySheetStudentId, daySheetDate, { type:'cancelled' });
+  showToast('Занятие отменено', 'success', 3000);
+  closeDaySheet();
+}
+
+function renderDaySheetInner(){
+  if(!daySheetDate) return '';
+  const dayLessons = getFilteredLessonsInRange(daySheetDate, daySheetDate);
+
+  if(!daySheetStudentId){
+    return `
+      <div class="filelabel">Занятия ${esc(daySheetDate)}</div>
+      ${dayLessons.map(l => `
+        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-bottom:0.375rem; justify-content:flex-start;" onclick="openLessonDetail('${l.studentId}')">
+          <span style="width:0.5rem;height:0.5rem;border-radius:999px;background:${l.accent.ink};margin-right:0.5rem; flex-shrink:0;"></span>
+          ${esc(l.studentName)} · ${esc(l.time)}
+        </button>`).join('')}
+    `;
+  }
+
+  const student = data.students.find(s=>s.id===daySheetStudentId);
+  const lesson = dayLessons.find(l=>l.studentId===daySheetStudentId);
+  const d = lessonNotesDraft || { topic:'', description:'', homework:'', materialIds:[] };
+  const materials = student ? materialsFor(student.id) : [];
+
+  return `
+    ${dayLessons.length > 1 ? `<button class="hamburger" onclick="backToDayList()" style="margin-bottom:0.5rem;" title="Все занятия этого дня">←</button>` : ''}
+    <div style="font-weight:700; font-size:0.9375rem; margin-bottom:0.75rem;">${esc(student?student.name:'')} · ${esc(lesson?lesson.time:'')}${lesson&&lesson.status==='pending'?' <span style="color:#B5651D; font-weight:400; font-size:0.8125rem;">(уточняется)</span>':''}</div>
+
+    <div class="filelabel">Тема занятия</div>
+    <input id="lessonTopicInput" type="text" value="${esc(d.topic)}" placeholder="например, Квадратные уравнения" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+
+    <div class="filelabel">Описание</div>
+    <textarea id="lessonDescInput" placeholder="что разбирали, как прошло" style="width:100%; min-height:3.5rem; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem; font-family:inherit; resize:vertical;">${esc(d.description)}</textarea>
+
+    <div class="filelabel">Домашнее задание</div>
+    <textarea id="lessonHomeworkInput" placeholder="что задано на дом" style="width:100%; min-height:3.5rem; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem; font-family:inherit; resize:vertical;">${esc(d.homework)}</textarea>
+
+    <div class="filelabel">Материалы к этому занятию</div>
+    ${materials.length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">У ученика пока нет материалов — добавь в разделе «Материалы»</div>' : `
+      <div style="display:flex; flex-direction:column; gap:0.25rem; margin-bottom:0.5rem;">
+        ${materials.map(m => `
+          <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.78125rem; cursor:pointer;">
+            <input type="checkbox" ${d.materialIds.includes(m.id)?'checked':''} onchange="toggleLessonMaterial('${m.id}', this.checked)">
+            <span>${materialIcon(m.url)}</span> ${esc(m.name||m.url)}
+          </label>`).join('')}
+      </div>
+    `}
+
+    <button class="btn btn-done" style="width:100%; margin-bottom:0.75rem;" onclick="saveLessonNotes()">💾 Сохранить</button>
+
+    ${lesson && lesson.status !== 'skipped' ? `
+      <div class="filelabel">Это занятие</div>
+      ${showRescheduleInDaySheet ? `
+        <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+          <input type="date" id="daySheetReschedDate" value="${esc(daySheetDate)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          <input type="time" id="daySheetReschedTime" value="${esc(lesson.time)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        </div>
+        <div style="display:flex; gap:0.375rem;">
+          <button class="btn btn-done" style="flex:1;" onclick="confirmRescheduleFromDaySheet()">✓ Перенести</button>
+          <button class="btn btn-off" style="flex:1;" onclick="cancelRescheduleFromDaySheet()">Отмена</button>
+        </div>
+      ` : `
+        <div style="display:flex; gap:0.375rem;">
+          <button class="btn" style="flex:1; background:#F1F3F5; color:#3A4250;" onclick="openRescheduleFromDaySheet()">↪️ Перенести</button>
+          <button class="btn" style="flex:1; background:#FBEEEC; color:#C0392B;" onclick="cancelLessonFromDaySheet()">✕ Отменить</button>
+        </div>
+      `}
+    ` : ''}
+  `;
+}
+function renderDaySheet(){
+  if(!daySheetOpen) return '';
+  return `
+  <div class="mat-sheet-backdrop" onclick="closeDaySheet()"></div>
+  <div class="mat-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">📅 ${esc(daySheetDate||'')}</div>
+      <button class="hamburger" onclick="closeDaySheet()">✕</button>
+    </div>
+    <div id="daySheetInner" style="padding:0 1rem 1.5rem;">${renderDaySheetInner()}</div>
+  </div>`;
 }
 
 // ---- «Добавить занятие»: отдельный экран, начинается с выбора ученика ----
@@ -398,6 +563,7 @@ function renderCalendarView(){
     <button class="btn btn-done" style="width:100%; margin-bottom:0.5rem;" onclick="openAddLessonSheet()">+ Добавить занятие</button>
     ${renderBreakForm()}
     ${renderAddLessonSheet()}
+    ${renderDaySheet()}
   `;
 }
 function updateIssuesBadge(){

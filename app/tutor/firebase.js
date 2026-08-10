@@ -534,6 +534,19 @@
     catch (e) { console.error('delete exception failed', e); }
   };
 
+  window.__fbSaveLessonNotes = async function(studentId, dateStr, notes){
+    if (!currentUid) return;
+    try { await setDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleNotes', dateStr), notes); }
+    catch (e) { console.error('save lesson notes failed', e); }
+  };
+  window.__fbLoadLessonNotes = async function(studentId, dateStr){
+    if (!currentUid) return null;
+    try {
+      const snap = await getDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleNotes', dateStr));
+      return snap.exists() ? snap.data() : null;
+    } catch (e) { console.error('load lesson notes failed', e); return null; }
+  };
+
   let watchedCodes = new Set();
   function watchPendingInviteCodes(uid, students){
     students.forEach(s => {
