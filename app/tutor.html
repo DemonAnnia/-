@@ -21,20 +21,24 @@
   <div class="drawer-title">📘 Меню</div>
 
   <button class="drawer-item" onclick="showOverviewView()">🏠 Обзор</button>
+  <hr class="drawer-hr">
+
   <button class="drawer-item" onclick="showStudentsView()">👥 Все ученики</button>
   <button class="drawer-item" onclick="toggleDrawerSection('online')">💻 Онлайн <span id="onlineArrow" style="margin-left:auto; opacity:.5;">▾</span></button>
   <div id="drawerOnline"></div>
   <button class="drawer-item" onclick="toggleDrawerSection('inperson')">🤝 Очно <span id="inpersonArrow" style="margin-left:auto; opacity:.5;">▾</span></button>
   <div id="drawerInperson"></div>
-  <button class="drawer-item" onclick="addStudent(); closeDrawer();">➕ Добавить ученика</button>
+  <button class="drawer-item" onclick="openAddStudentSheet()">➕ Добавить ученика</button>
 
   <hr class="drawer-hr">
+  <button class="drawer-item" onclick="showIssuesView()">⚠️ Нерешённые вопросы <span id="issuesBadge" style="display:none; margin-left:auto; font-size:0.6875rem; background:#C0392B; color:#fff; padding:0.1rem 0.4rem; border-radius:999px;"></span></button>
+  <button class="drawer-item" onclick="showCalendarView()">📅 Календарь</button>
   <button class="drawer-item" onclick="showMaterialsView()">📚 Материалы</button>
   <button class="drawer-item" style="color:#B7BEC7; cursor:default;" onclick="showToast('Тренажёры — в работе, скоро будут.', 'info', 4000)">🧠 Тренажёры <span style="margin-left:auto; font-size:0.6875rem; background:#F1F3F5; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></button>
-  <button class="drawer-item" onclick="showFriendsView()">👥 Друзья</button>
-  <button class="drawer-item" onclick="showCalendarView()">📅 Календарь <span id="calendarBadge" style="display:none; margin-left:auto; font-size:0.6875rem; background:#C0392B; color:#fff; padding:0.1rem 0.4rem; border-radius:999px;"></span></button>
+  <button class="drawer-item" onclick="showFriendsView()">🤝 Друзья</button>
 
   <hr class="drawer-hr">
+  <button class="drawer-item" onclick="showNotificationsView()">🔔 Уведомления <span id="notifBadge" style="display:none; margin-left:auto; font-size:0.6875rem; background:#C0392B; color:#fff; padding:0.1rem 0.4rem; border-radius:999px;"></span></button>
   <button class="drawer-item" onclick="showSettingsView()">⚙️ Настройки</button>
   <input id="restoreFile" type="file" accept="application/json" style="display:none;" onchange="restoreBackup(this)">
 
@@ -51,12 +55,15 @@
   </div>
   <div id="pageSub" class="sub" style="margin-top:0.375rem;">Ссылки, доски и материалы — по каждому ученику. Синхронизируется на всех устройствах.</div>
   <div id="mainArea"></div>
+  <div id="onboardingSheetContainer"></div>
 </div>
 </div>
 
 <script src="tutor/shared.js"></script>
 <script src="tutor/calendar.js"></script>
 <script src="tutor/scheduleUI.js"></script>
+<script src="tutor/issues.js"></script>
+<script src="tutor/notifications.js"></script>
 <script src="tutor/students.js"></script>
 <script src="tutor/materials.js"></script>
 <script src="tutor/friends.js"></script>

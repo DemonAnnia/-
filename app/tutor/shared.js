@@ -54,12 +54,22 @@ function themePickerHTML(currentTheme, onClickFn){
 }
 
 const ACCENTS = [
-  {ink:'#C0392B', soft:'#F6E4E1'},
-  {ink:'#2E7D4F', soft:'#E2EFE6'},
-  {ink:'#2C4A7C', soft:'#E3E9F1'},
-  {ink:'#B5651D', soft:'#F3E5D6'},
-  {ink:'#5A6472', soft:'#E7E9EC'},
+  {ink:'#C0392B', soft:'#F6E4E1'}, // красный
+  {ink:'#D2694A', soft:'#F9E6DC'}, // коралловый
+  {ink:'#B5651D', soft:'#F3E5D6'}, // оранжевый
+  {ink:'#A6821C', soft:'#F1EAD3'}, // горчичный
+  {ink:'#2E7D4F', soft:'#E2EFE6'}, // зелёный
+  {ink:'#1F7A72', soft:'#DFF0EE'}, // мятный
+  {ink:'#2C4A7C', soft:'#E3E9F1'}, // синий
+  {ink:'#3E7CA6', soft:'#E2EEF5'}, // небесный
+  {ink:'#3B4C99', soft:'#E4E7F6'}, // индиго
+  {ink:'#6A4C93', soft:'#EFEAF6'}, // фиолетовый
+  {ink:'#8B3A62', soft:'#F1E1EA'}, // сливовый
+  {ink:'#C2547A', soft:'#FBEAF0'}, // розовый
+  {ink:'#6B4A32', soft:'#EEE5DC'}, // коричневый
+  {ink:'#5A6472', soft:'#E7E9EC'}, // серый
 ];
+const ACCENT_NAMES = ['Красный','Коралловый','Оранжевый','Горчичный','Зелёный','Мятный','Синий','Небесный','Индиго','Фиолетовый','Сливовый','Розовый','Коричневый','Серый'];
 
 function defaultData(){
   return {
@@ -105,7 +115,11 @@ function load(){
 function save(){
   try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){}
   if(window.__firestoreSave) window.__firestoreSave(data);
-  render();
+  if(typeof studentSheetOpen !== 'undefined' && studentSheetOpen && typeof refreshStudentSheet === 'function'){
+    refreshStudentSheet();
+  } else {
+    render();
+  }
 }
 
 let data = defaultData(); // placeholder until Firebase auth + Firestore load finishes

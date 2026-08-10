@@ -18,6 +18,7 @@ async function generateInviteCode(studentId){
     const s = data.students.find(x=>x.id===studentId);
     s.inviteCode = code;
     save();
+    if(studentSheetOpen) refreshStudentSheet();
   } else {
     showToast('Не получилось создать код, попробуй ещё раз');
   }
@@ -28,50 +29,246 @@ async function revokeInviteCode(studentId){
   if(window.__fbRevokeLink) await window.__fbRevokeLink(s.inviteCode);
   delete s.inviteCode;
   save();
+  if(studentSheetOpen) refreshStudentSheet();
+}
+let confirmResetAccess = false;
+function requestResetAccess(){
+  confirmResetAccess = true;
+  refreshStudentSheet();
+}
+function cancelResetAccess(){
+  confirmResetAccess = false;
+  refreshStudentSheet();
+}
+async function confirmResetAndNewCode(studentId){
+  const s = data.students.find(x=>x.id===studentId);
+  if(!s) return;
+  s.hasAccount = false;
+  confirmResetAccess = false;
+  save();
+  await generateInviteCode(studentId);
+  showToast('Старый доступ сброшен, новый код готов', 'success', 4000);
 }
 
-function addStudent(){
-  data.students.push({id:uid(), name:'Новый ученик', grade:'', format:'Онлайн',
-    accent: data.students.length % ACCENTS.length, messengers:[], boardLink:'', callLink:'',
-    needsPaymentReport:true, subjects:[], files:[]});
-  save();
+// ---- Механика выезжающего экрана: черновик правится локально, пишется в базу только по «Сохранить» ----
+let studentSheetOpen = false;
+let editingStudentId = null;
+let editingStudentDraft = null;
+let isNewStudentDraft = false;
+let pendingSheetExit = false;
+let pendingSaveWarning = null;
+
+function makeBlankStudentDraft(){
+  return {
+    id: uid(), firstName:'', lastName:'', gradeNumber:'', format:'Онлайн',
+    accent: data.students.length % ACCENTS.length,
+    callLink:'', boardLink:'',
+    childContacts:[], childPrimaryId:null,
+    parentContacts:[], parentPrimaryId:null,
+    needsPaymentReport:true, subjects:[],
+    hasAccount:false, inviteCode:null, completedLessonsCount:0,
+  };
 }
-let messengerAddKind = {}; // studentId -> 'child'|'parent', default 'child'
-function setMessengerKind(sid, kind){ messengerAddKind[sid] = kind; render(); }
-function groupMessengers(messengers){
-  const child = [], parent = [];
-  (messengers||[]).forEach(m => (m.for === 'parent' ? parent : child).push(m));
-  return { child, parent };
+function cloneStudentForDraft(s){
+  const draft = JSON.parse(JSON.stringify(s));
+  if(draft.firstName === undefined){
+    const parts = (s.name||'').trim().split(/\s+/).filter(Boolean);
+    draft.firstName = parts[0] || '';
+    draft.lastName = parts.slice(1).join(' ') || '';
+  }
+  if(draft.gradeNumber === undefined){
+    const m = (s.grade||'').match(/\d+/);
+    draft.gradeNumber = m ? m[0] : '';
+  }
+  if(!draft.childContacts) draft.childContacts = [];
+  if(!draft.parentContacts) draft.parentContacts = [];
+  return draft;
 }
-function addMessenger(id){
+function openAddStudentSheet(){
+  editingStudentId = null;
+  isNewStudentDraft = true;
+  editingStudentDraft = makeBlankStudentDraft();
+  pendingSheetExit = false;
+  pendingSaveWarning = null;
+  confirmResetAccess = false;
+  studentSheetOpen = true;
+  viewMode = 'students';
+  closeDrawer();
+  render();
+}
+function openEditStudentSheet(id){
   const s = data.students.find(x=>x.id===id);
-  const labelEl = document.getElementById('mlabel-'+id);
-  const urlEl = document.getElementById('murl-'+id);
-  if(!urlEl.value) return;
-  s.messengers.push({id:uid(), label:labelEl.value, url:urlEl.value, for: messengerAddKind[id] || 'child'});
-  labelEl.value=''; urlEl.value='';
-  save();
+  if(!s) return;
+  editingStudentId = id;
+  isNewStudentDraft = false;
+  editingStudentDraft = cloneStudentForDraft(s);
+  pendingSheetExit = false;
+  pendingSaveWarning = null;
+  confirmResetAccess = false;
+  studentSheetOpen = true;
+  viewMode = 'students';
+  closeDrawer();
+  render();
 }
-function removeMessenger(sid, mid){
-  const s = data.students.find(x=>x.id===sid);
-  s.messengers = s.messengers.filter(m=>m.id!==mid);
-  save();
+function draftHasChanges(){
+  if(!editingStudentDraft) return false;
+  if(isNewStudentDraft){
+    const d = editingStudentDraft;
+    return !!(d.firstName || d.lastName || d.gradeNumber || d.callLink || d.boardLink
+      || (d.childContacts||[]).length || (d.parentContacts||[]).length || (d.subjects||[]).length);
+  }
+  const s = data.students.find(x=>x.id===editingStudentId);
+  if(!s) return false;
+  return JSON.stringify(cloneStudentForDraft(s)) !== JSON.stringify(editingStudentDraft);
 }
-function addSubject(id){
-  const s = data.students.find(x=>x.id===id);
-  const labelEl = document.getElementById('sublabel-'+id);
-  const priceEl = document.getElementById('subprice-'+id);
-  const subjectEl = document.getElementById('subsubject-'+id);
-  if(!labelEl.value.trim()) { showToast('Впиши название тарифа'); return; }
-  if(!Array.isArray(s.subjects)) s.subjects = [];
-  s.subjects.push({ id: uid(), label: labelEl.value.trim(), price: priceEl.value.trim(), subject: subjectEl ? subjectEl.value : null });
-  labelEl.value=''; priceEl.value='';
-  save();
+function requestCloseStudentSheet(){
+  if(draftHasChanges() && !pendingSheetExit){
+    pendingSheetExit = true;
+    refreshStudentSheet();
+    return;
+  }
+  closeStudentSheet();
 }
-function removeSubject(sid, subId){
-  const s = data.students.find(x=>x.id===sid);
-  s.subjects = (s.subjects||[]).filter(sub=>sub.id!==subId);
+function cancelSheetExit(){
+  pendingSheetExit = false;
+  refreshStudentSheet();
+}
+function closeStudentSheet(){
+  studentSheetOpen = false;
+  editingStudentId = null;
+  editingStudentDraft = null;
+  isNewStudentDraft = false;
+  pendingSheetExit = false;
+  pendingSaveWarning = null;
+  confirmResetAccess = false;
+  render();
+}
+function saveStudentDraft(force){
+  const d = editingStudentDraft;
+  const name = (d.firstName||'').trim() + ((d.lastName||'').trim() ? ' '+d.lastName.trim() : '');
+  if(!name.trim() && !force){
+    pendingSaveWarning = 'Имя не указано — сохранить всё равно?';
+    refreshStudentSheet();
+    return;
+  }
+  d.name = name.trim() || 'Без имени';
+  d.grade = d.gradeNumber ? (d.gradeNumber + ' класс') : '';
+  pendingSaveWarning = null;
+
+  if(isNewStudentDraft){
+    data.students.push(d);
+  } else {
+    const idx = data.students.findIndex(x=>x.id===editingStudentId);
+    if(idx>=0) data.students[idx] = d;
+  }
   save();
+  showToast('Сохранено', 'success', 3000);
+  closeStudentSheet();
+}
+
+function renderStudentPreviewHTML(){
+  const d = editingStudentDraft;
+  const accent = ACCENTS[d.accent] || ACCENTS[0];
+  const name = ((d.firstName||'').trim() + ((d.lastName||'').trim() ? ' '+d.lastName.trim() : '')) || 'Новый ученик';
+  const grade = d.gradeNumber ? (d.gradeNumber+' класс') : '';
+  return `
+    <div style="display:flex; align-items:center; gap:0.625rem; padding:0.625rem 0.875rem; background:${accent.soft}; border-radius:0.75rem;">
+      <div class="dot" style="background:${accent.ink}; flex-shrink:0;"></div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:700; font-size:0.9375rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(name)}</div>
+        <div style="font-size:0.75rem; color:#5A6472;">${esc(grade)}${grade&&d.format?' · ':''}${esc(d.format||'')}</div>
+      </div>
+    </div>`;
+}
+function updateStickyPreview(){
+  const el = document.getElementById('studentPreviewSticky');
+  if(el) el.innerHTML = renderStudentPreviewHTML();
+  const titleEl = document.getElementById('studentSheetTitle');
+  if(titleEl){
+    const d = editingStudentDraft;
+    const name = ((d.firstName||'').trim() + ((d.lastName||'').trim() ? ' '+d.lastName.trim() : '')).trim() || (isNewStudentDraft ? 'Новый ученик' : 'Без имени');
+    titleEl.textContent = (isNewStudentDraft ? '➕ ' : '✏️ ') + name;
+  }
+}
+function refreshStudentSheet(){
+  if(!studentSheetOpen || !editingStudentDraft) return;
+  const el = document.getElementById('studentSheetInner');
+  if(el) el.innerHTML = renderStudentSheetInner(editingStudentDraft);
+  updateStickyPreview();
+}
+function renderStudentSheet(){
+  if(!studentSheetOpen || !editingStudentDraft) return '';
+  const d = editingStudentDraft;
+  const name = ((d.firstName||'').trim() + ((d.lastName||'').trim() ? ' '+d.lastName.trim() : '')).trim() || (isNewStudentDraft ? 'Новый ученик' : 'Без имени');
+  return `
+  <div class="mat-sheet-backdrop" onclick="requestCloseStudentSheet()"></div>
+  <div class="mat-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
+      <div id="studentSheetTitle" style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">${isNewStudentDraft?'➕ ':'✏️ '}${esc(name)}</div>
+      <button class="hamburger" onclick="requestCloseStudentSheet()">✕</button>
+    </div>
+    <div id="studentPreviewSticky" style="position:sticky; top:0; z-index:5; padding:0 1rem 0.75rem; background:#F3F5F1;">${renderStudentPreviewHTML()}</div>
+    <div id="studentSheetInner" style="padding:0 1rem 1.5rem;">${renderStudentSheetInner(d)}</div>
+  </div>`;
+}
+
+// ---- Типизированные контакты ребёнка/родителя (тот же паттерн, что у профиля репетитора) ----
+function studentContactGridHTML(group, contacts, primaryId){
+  return CONTACT_TYPE_ORDER.map(type => {
+    const t = CONTACT_TYPES[type];
+    const existing = (contacts||[]).filter(c => c.type === type);
+    return `
+      <div style="margin-bottom:0.625rem;">
+        <div style="font-size:0.75rem; font-weight:700; color:#5A6472; margin-bottom:0.25rem;">${t.icon} ${t.label}</div>
+        ${existing.map(c => `
+          <div style="display:flex; align-items:center; gap:0.375rem; margin-bottom:0.25rem;">
+            <button onclick="setDraftContactPrimary('${group}','${c.id}')" title="Основной" style="width:1.375rem; height:1.375rem; border-radius:999px; border:1px solid ${primaryId===c.id?'#F0B429':'#C9D2DB'}; background:${primaryId===c.id?'#FEF3D6':'#fff'}; color:${primaryId===c.id?'#B8860B':'#C9D2DB'}; font-size:0.75rem; cursor:pointer; flex-shrink:0;">★</button>
+            <span style="flex:1; min-width:0; font-size:0.78125rem; color:#3A4250; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c.value)}</span>
+            <a href="${contactLink(c)}" target="_blank" style="font-size:0.71875rem; color:#2C4A7C; flex-shrink:0;">проверить</a>
+            <button onclick="removeDraftContact('${group}','${c.id}')" style="width:1.5rem; height:1.5rem; border-radius:0.375rem; border:1px solid #F0DAD6; background:#FBEEEC; color:#C0392B; cursor:pointer; flex-shrink:0;">✕</button>
+          </div>`).join('')}
+        <div style="display:flex; gap:0.375rem;">
+          <input id="newcontact-${group}-${type}" type="text" placeholder="${t.placeholder}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          <button onclick="addDraftContact('${group}','${type}')" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer; flex-shrink:0;">+</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+function addDraftContact(group, type){
+  const input = document.getElementById(`newcontact-${group}-${type}`);
+  const value = input.value.trim();
+  if(!value) return;
+  const key = group==='child' ? 'childContacts' : 'parentContacts';
+  const primaryKey = group==='child' ? 'childPrimaryId' : 'parentPrimaryId';
+  const newContact = { id: uid(), type, value };
+  editingStudentDraft[key].push(newContact);
+  if(!editingStudentDraft[primaryKey]) editingStudentDraft[primaryKey] = newContact.id;
+  refreshStudentSheet();
+}
+function removeDraftContact(group, id){
+  const key = group==='child' ? 'childContacts' : 'parentContacts';
+  const primaryKey = group==='child' ? 'childPrimaryId' : 'parentPrimaryId';
+  editingStudentDraft[key] = editingStudentDraft[key].filter(c=>c.id!==id);
+  if(editingStudentDraft[primaryKey]===id) editingStudentDraft[primaryKey] = editingStudentDraft[key][0] ? editingStudentDraft[key][0].id : null;
+  refreshStudentSheet();
+}
+function setDraftContactPrimary(group, id){
+  const primaryKey = group==='child' ? 'childPrimaryId' : 'parentPrimaryId';
+  editingStudentDraft[primaryKey] = id;
+  refreshStudentSheet();
+}
+
+function addDraftSubject(){
+  const labelEl = document.getElementById('draftSubLabel');
+  const priceEl = document.getElementById('draftSubPrice');
+  const subjectEl = document.getElementById('draftSubjectSelect');
+  if(!labelEl.value.trim()){ showToast('Впиши название тарифа'); return; }
+  editingStudentDraft.subjects.push({ id: uid(), label: labelEl.value.trim(), price: priceEl.value.trim(), subject: subjectEl ? subjectEl.value : null });
+  refreshStudentSheet();
+}
+function removeDraftSubject(subId){
+  editingStudentDraft.subjects = (editingStudentDraft.subjects||[]).filter(s=>s.id!==subId);
+  refreshStudentSheet();
 }
 
 // ---- Расписание: панель на карточке ученика (см. calendar-architecture.md, раздел 2) ----
@@ -81,10 +278,10 @@ let scheduleAddDays = {}; // studentId -> [dayOfWeek,...]
 function toggleScheduleDay(sid, dow){
   const cur = scheduleAddDays[sid] || [];
   scheduleAddDays[sid] = cur.includes(dow) ? cur.filter(d=>d!==dow) : [...cur, dow];
-  render();
+  if(studentSheetOpen) refreshStudentSheet(); else render();
 }
 function focusTariffInput(sid){
-  const el = document.getElementById('sublabel-'+sid);
+  const el = document.getElementById('draftSubLabel');
   if(el){ el.scrollIntoView({behavior:'smooth', block:'center'}); el.focus(); }
 }
 function scheduleGroupKey(r){ return `${r.time}|${r.subjectId||''}|${r.startDate}|${r.endDate||''}`; }
@@ -124,7 +321,7 @@ function addScheduleGroup(sid){
   });
   scheduleAddDays[sid] = [];
   showToast('Добавлено в расписание', 'success', 3000);
-  render();
+  if(studentSheetOpen) refreshStudentSheet(); else render();
 }
 function deleteScheduleGroup(sid, ruleIdsJoined){
   ruleIdsJoined.split(',').forEach(ruleId => {
@@ -134,6 +331,12 @@ function deleteScheduleGroup(sid, ruleIdsJoined){
 
 let studentSubjectFilter = 'all';
 function setStudentSubjectFilter(v){ studentSubjectFilter = v; render(); }
+let studentGradeFilter = 'all';
+function setStudentGradeFilter(v){ studentGradeFilter = v; render(); }
+let studentFormatFilter = 'all';
+function setStudentFormatFilter(v){ studentFormatFilter = v; render(); }
+let studentFiltersExpanded = false;
+function toggleStudentFiltersExpanded(){ studentFiltersExpanded = !studentFiltersExpanded; render(); }
 
 let doneMsgFor = {};
 function markDone(id){
@@ -155,15 +358,13 @@ function markDone(id){
   render();
 }
 
-let studentMsgOpen = {};
 function materialsFor(studentId){
   return (data.materials||[]).filter(m => m.visibleToAll || (m.studentIds||[]).includes(studentId));
 }
-
 function buildStudentMessage(s){
   const lines = [];
-  if(s.format!=='Очно' && s.callLink) lines.push(`Подключиться к занятию: ${s.callLink}`);
-  if(s.format!=='Очно' && s.boardLink) lines.push(`Доска: ${s.boardLink}`);
+  if(s.callLink) lines.push(`Подключиться к занятию: ${s.callLink}`);
+  if(s.boardLink) lines.push(`Доска: ${s.boardLink}`);
   const allFiles = materialsFor(s.id);
   if(allFiles.length){
     lines.push('Материалы к уроку:');
@@ -172,34 +373,60 @@ function buildStudentMessage(s){
   if(lines.length===0) return null;
   return `Привет, ${s.name}! Вот что нужно для занятия:\n\n${lines.join('\n')}`;
 }
-function toggleStudentMsg(id){
-  if(studentMsgOpen[id]) delete studentMsgOpen[id]; else studentMsgOpen[id] = true;
-  render();
-}
 
-let msgTextById = {};
-function renderStudentMsgBox(s){
-  const text = buildStudentMessage(s);
-  if(!text){
-    return `<div class="msgbox" style="border-color:#E3E3D8;"><div style="flex:1;">Пока нет ни ссылок, ни материалов у ${esc(s.name)} — добавь их ниже, и здесь появится готовый текст.</div></div>`;
-  }
-  msgTextById[s.id] = text;
-  return `<div class="msgbox" style="white-space:pre-wrap;"><div style="flex:1;">${esc(text)}</div><button class="iconbtn" onclick="copyStudentMsg('${s.id}', this)">⧉</button></div>`;
+// ---- Прямая отправка сообщения в основной контакт (см. п.7-8 обсуждения) ----
+function allStudentContacts(s){
+  return [...(s.childContacts||[]), ...(s.parentContacts||[])];
 }
-function copyStudentMsg(id, btn){ copyText(msgTextById[id], btn); }
+function primaryStudentContact(s){
+  const contacts = allStudentContacts(s);
+  const primaryId = s.childPrimaryId || s.parentPrimaryId;
+  return contacts.find(c=>c.id===primaryId) || contacts[0] || null;
+}
+function sendMessageToStudent(id){
+  const s = data.students.find(x=>x.id===id);
+  if(!s) return;
+  const text = buildStudentMessage(s);
+  if(!text){ showToast('Пока нет ни ссылок, ни материалов — добавь их в карточке ученика'); return; }
+  const primary = primaryStudentContact(s);
+  if(!primary){ showToast('Сначала добавь контакт ребёнка или родителя в карточке'); return; }
+  if(primary.type === 'whatsapp'){
+    window.open(`https://wa.me/${primary.value}?text=${encodeURIComponent(text)}`, '_blank');
+  } else if(primary.type === 'email'){
+    window.open(`mailto:${primary.value}?subject=${encodeURIComponent('Материалы к уроку')}&body=${encodeURIComponent(text)}`, '_blank');
+  } else {
+    try{ navigator.clipboard.writeText(text); }catch(e){}
+    window.open(contactLink(primary), '_blank');
+    showToast('Текст скопирован — вставь его в открывшийся чат', 'info', 6000);
+  }
+}
+function sendContactChip(id, contactId){
+  const s = data.students.find(x=>x.id===id);
+  if(!s) return;
+  const c = allStudentContacts(s).find(x=>x.id===contactId);
+  if(!c) return;
+  const text = buildStudentMessage(s);
+  if(c.type === 'whatsapp' && text){
+    window.open(`https://wa.me/${c.value}?text=${encodeURIComponent(text)}`, '_blank');
+  } else {
+    if(text){ try{ navigator.clipboard.writeText(text); }catch(e){} showToast('Текст скопирован — вставь его в открывшийся чат', 'info', 6000); }
+    window.open(contactLink(c), '_blank');
+  }
+}
 
 function cardHTML(s){
     const accent = ACCENTS[s.accent] || ACCENTS[0];
-    const open = data.openIds.includes(s.id);
-    const tags = s.subjects.map(sub=>`<span class="tag">${sub.subject ? esc(sub.subject)+': ' : ''}${esc(sub.label)} · ${esc(sub.price)}</span>`).join('');
-    const msg = doneMsgFor[s.id];
+    const tags = (s.subjects||[]).map(sub=>`<span class="tag">${sub.subject ? esc(sub.subject)+': ' : ''}${esc(sub.label)} · ${esc(sub.price)}</span>`).join('');
     const studentTheme = studentThemes[s.id];
     const themeBadge = (studentTheme && studentTheme !== 'classic' && THEMES[studentTheme])
       ? `<span style="position:absolute; bottom:-0.125rem; right:-0.125rem; width:0.5rem; height:0.5rem; border-radius:999px; background:${THEMES[studentTheme].accent}; border:1.5px solid #fff;"></span>`
       : '';
+    const contacts = allStudentContacts(s);
+    const primary = primaryStudentContact(s);
+    const others = contacts.filter(c => !primary || c.id !== primary.id);
     return `
     <div class="card">
-      <div class="card-head" style="background:${accent.soft}" onclick="toggleOpen('${s.id}')">
+      <div class="card-head" style="background:${accent.soft}" onclick="openEditStudentSheet('${s.id}')">
         <div style="position:relative; flex-shrink:0;">
           <div class="dot" style="background:${accent.ink}"></div>
           ${themeBadge}
@@ -208,116 +435,144 @@ function cardHTML(s){
           <div class="name">${esc(s.name)}</div>
           <div class="meta">${esc(s.grade)} · ${esc(s.format)}</div>
         </div>
-        <button class="chev ${open?'open':''}">⌄</button>
+        <button class="chev">✏️</button>
       </div>
       <div class="body">
         <div class="tags">${tags}</div>
         <div class="row">
-          ${s.format!=='Очно'?`<a class="btn ${s.callLink?'':'btn-off'}" href="${s.callLink?esc(s.callLink):'#'}" target="_blank" style="background:${s.callLink?'#1F2A3D':''};color:${s.callLink?'#fff':''}" onclick="${s.callLink?'':'return false;'}">🎥 Звонок</a>`:''}
-          ${s.format!=='Очно'?`<a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?accent.ink:''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>`:''}
+          <a class="btn ${s.callLink?'':'btn-off'}" href="${s.callLink?esc(s.callLink):'#'}" target="_blank" style="background:${s.callLink?'#1F2A3D':''};color:${s.callLink?'#fff':''}" onclick="${s.callLink?'':'return false;'}">🎥 Звонок</a>
+          <a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?'#C0392B':''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>
           <button class="btn btn-done" onclick="markDone('${s.id}')">✓ Урок прошёл</button>
         </div>
-        ${(() => {
-          const g = groupMessengers(s.messengers);
-          const chips = list => `<div class="chiprow">${list.map(m=>`<a class="chip" href="${esc(m.url)}" target="_blank">💬 ${esc(m.label||'Чат')}</a>`).join('')}</div>`;
-          if(!g.child.length && !g.parent.length) return '';
-          let out = '';
-          if(g.child.length) out += chips(g.child);
-          if(g.child.length && g.parent.length) out += `<hr style="border:none; border-top:1px solid #EEF0F2; margin:0.5rem 0;">`;
-          if(g.parent.length) out += chips(g.parent);
-          return out;
-        })()}
-        <button class="btn" style="width:100%;margin-top:8px;background:${accent.soft};color:${accent.ink};border:1px solid ${accent.soft};" onclick="toggleStudentMsg('${s.id}')">📨 Сообщение ученику со ссылками</button>
-        ${msg?`<div class="msgbox"><div style="flex:1;">${esc(msg)}</div>${s.needsPaymentReport?`<button class="iconbtn" onclick="copyText('${esc(msg)}', this)">⧉</button>`:''}</div>`:''}
-        ${studentMsgOpen[s.id] ? renderStudentMsgBox(s) : ''}
-      </div>
-      <div class="edit ${open?'open':''}">
-        <div style="display:flex; gap:0.375rem; padding-top:0.75rem; margin-bottom:0.625rem;">
-          <button onclick="updateStudent('${s.id}',{format:'Онлайн'})" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${s.format!=='Очно'?accent.ink:'#C9D2DB'}; background:${s.format!=='Очно'?accent.soft:'#fff'}; color:${s.format!=='Очно'?accent.ink:'#8A93A0'}; cursor:pointer;">💻 Онлайн</button>
-          <button onclick="updateStudent('${s.id}',{format:'Очно'})" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${s.format==='Очно'?accent.ink:'#C9D2DB'}; background:${s.format==='Очно'?accent.soft:'#fff'}; color:${s.format==='Очно'?accent.ink:'#8A93A0'}; cursor:pointer;">🤝 Очно</button>
-        </div>
-        <div style="padding-top:0;">
-          ${s.format!=='Очно'?`<div class="field"><span>🎥</span><input type="text" placeholder="ссылка на звонок (Зум / Телемост)" value="${esc(s.callLink)}" onchange="updateStudent('${s.id}',{callLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.callLink)}', this)">⧉</button></div>`:''}
-          ${s.format!=='Очно'?`<div class="field"><span>✏️</span><input type="text" placeholder="ссылка на доску" value="${esc(s.boardLink)}" onchange="updateStudent('${s.id}',{boardLink:this.value})"><button class="iconbtn" onclick="copyText('${esc(s.boardLink)}', this)">⧉</button></div>`:''}
-          <div class="filelabel" style="margin-top:0.5rem;">Ссылки на чат</div>
-          ${(() => {
-            const g = groupMessengers(s.messengers);
-            const row = m => `
-              <div class="filerow">
-                <span>💬</span>
-                <a href="${esc(m.url)}" target="_blank" rel="noreferrer">${esc(m.label||m.url)}</a>
-                <button class="iconbtn" onclick="removeMessenger('${s.id}','${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
-              </div>`;
-            if(!g.child.length && !g.parent.length) return '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>';
-            let out = '';
-            if(g.child.length){ out += `<div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">Ребёнку</div>` + g.child.map(row).join(''); }
-            if(g.child.length && g.parent.length) out += `<hr style="border:none; border-top:1px solid #EEF0F2; margin:0.5rem 0;">`;
-            if(g.parent.length){ out += `<div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">Родителю</div>` + g.parent.map(row).join(''); }
-            return out;
-          })()}
-          <div style="display:flex; gap:0.375rem; margin:0.5rem 0 0.375rem;">
-            <button onclick="setMessengerKind('${s.id}','child')" class="mat-pill ${(messengerAddKind[s.id]||'child')==='child'?'picked':''}" style="flex:1; justify-content:center;">Ребёнку</button>
-            <button onclick="setMessengerKind('${s.id}','parent')" class="mat-pill ${messengerAddKind[s.id]==='parent'?'picked':''}" style="flex:1; justify-content:center;">Родителю</button>
-          </div>
-          <div class="fileadd">
-            <input class="fname" type="text" id="mlabel-${s.id}" placeholder="подпись (ВК, ТГ...)">
-            <input class="furl" type="text" id="murl-${s.id}" placeholder="ссылка: wa.me/... или t.me/...">
-            <button class="addfilebtn" onclick="addMessenger('${s.id}')">+</button>
-          </div>
-          <div class="filelabel" style="margin-top:0.75rem;">Тарифы</div>
-          ${(s.subjects||[]).length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>' : s.subjects.map(sub=>`
-            <div class="filerow">
-              <span>💳</span>
-              <span style="flex:1; font-size:0.8125rem;">${sub.subject ? `<b>${esc(sub.subject)}:</b> ` : ''}${esc(sub.label)} · ${esc(sub.price)}</span>
-              <button class="iconbtn" onclick="removeSubject('${s.id}','${sub.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
-            </div>`).join('')}
-          ${profileSubjects.length > 1 ? `
-            <select id="subsubject-${s.id}" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-              ${profileSubjects.map(sub=>`<option value="${esc(sub)}">${esc(sub)}</option>`).join('')}
-            </select>` : ''}
-          <div class="fileadd">
-            <input class="fname" type="text" id="sublabel-${s.id}" placeholder="название (напр. ОГЭ)">
-            <input class="furl" type="text" id="subprice-${s.id}" placeholder="цена (напр. 2900 ₽)">
-            <button class="addfilebtn" onclick="addSubject('${s.id}')">+</button>
-          </div>
-          <div class="filelabel" style="margin-top:0.75rem;">Расписание</div>
-          ${renderScheduleGroups(s)}
-          <div style="display:flex; gap:0.25rem; margin-bottom:0.375rem;">
-            ${DAY_NAMES.map((name, dow) => `<span class="mat-pill ${(scheduleAddDays[s.id]||[]).includes(dow)?'picked':''}" style="flex:1; justify-content:center; padding:0.3rem 0.25rem;" onclick="toggleScheduleDay('${s.id}',${dow})">${name}</span>`).join('')}
-          </div>
-          <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-            <input type="time" id="scheduletime-${s.id}" value="16:00" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-            <input type="date" id="schedulestart-${s.id}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-          </div>
-          ${(s.subjects||[]).length===0 ? `
-            <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.375rem;" onclick="focusTariffInput('${s.id}')">Тарифов пока нет — завести</button>
-            <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.375rem;">или оставь пока так, донастроишь тариф позже</div>
-          ` : `
-            <select id="scheduletariff-${s.id}" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-              <option value="">без привязки к тарифу</option>
-              ${s.subjects.map(sub=>`<option value="${sub.id}">${esc(sub.label)} · ${esc(sub.price)}</option>`).join('')}
-            </select>
-          `}
-          <button class="btn btn-done" style="width:100%; margin-bottom:0.5rem;" onclick="addScheduleGroup('${s.id}')">+ Добавить в расписание</button>
-          ${renderUpcomingLessons(s)}
-        </div>
-        <label class="checklabel"><input type="checkbox" ${s.needsPaymentReport?'checked':''} onchange="updateStudent('${s.id}',{needsPaymentReport:this.checked})"> Родителю нужно писать про оплату после урока</label>
-
-        <div class="filelabel">Вход для ученика</div>
-        ${s.hasAccount ? `
-          <div class="msgbox" style="align-items:center; background:#E2EFE6;">
-            <div style="flex:1; font-size:0.8125rem; color:#1F5C3A;">✅ Уже подключён — для нового предмета этому же ученику новый код не нужен, просто добавь тариф с нужным предметом выше</div>
-          </div>` : s.inviteCode ? `
-          <div class="msgbox" style="align-items:center;">
-            <div style="flex:1;">Код: <b style="font-family:'IBM Plex Mono',monospace; font-size:1rem;">${esc(s.inviteCode)}</b><br><span style="font-size:0.71875rem; color:#8A93A0;">Пришли этот код ученику — он вводит его один раз при создании своего аккаунта</span></div>
-            <button class="iconbtn" onclick="copyText('${esc(s.inviteCode)}', this)">⧉</button>
-            <button class="iconbtn" onclick="revokeInviteCode('${s.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
-          </div>` : `
-          <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.625rem;" onclick="generateInviteCode('${s.id}')">🔑 Создать код для входа</button>`}
-        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.375rem;" onclick="showMaterialsView('${s.id}')">📚 Материалы для ${esc(s.name)}</button>
-        <button class="delbtn" onclick="deleteStudent('${s.id}')">🗑 Удалить ученика</button>
+        ${primary ? `
+        <button class="btn" style="width:100%;margin-top:8px;background:${accent.soft};color:${accent.ink};border:1px solid ${accent.soft};" onclick="sendMessageToStudent('${s.id}')">📨 Написать ${esc(contactLabel(primary))}${others.length?'':''}</button>
+        ${others.length ? `<div class="chiprow">${others.map(c=>`<a class="chip" href="#" onclick="sendContactChip('${s.id}','${c.id}');return false;">${contactIcon(c)} ${esc(contactLabel(c))}</a>`).join('')}</div>` : ''}
+        ` : `<div style="font-size:0.78125rem;color:#9BA3AE; margin-top:0.5rem;">Контакты не добавлены — открой карточку, чтобы добавить</div>`}
+        ${doneMsgFor[s.id]?`<div class="msgbox"><div style="flex:1;">${esc(doneMsgFor[s.id])}</div>${s.needsPaymentReport?`<button class="iconbtn" onclick="copyText('${esc(doneMsgFor[s.id])}', this)">⧉</button>`:''}</div>`:''}
       </div>
     </div>`;
+}
+
+function renderStudentSheetInner(d){
+    const accent = ACCENTS[d.accent] || ACCENTS[0];
+    const savedStudent = !isNewStudentDraft ? data.students.find(x=>x.id===editingStudentId) : null;
+    return `
+        ${pendingSheetExit ? `
+          <div style="padding:0.75rem; background:#FBEEEC; border-radius:0.625rem; margin:0.75rem 0;">
+            <div style="font-size:0.8125rem; color:#7A2E1E; margin-bottom:0.5rem;">Есть несохранённые изменения. Точно выйти без сохранения?</div>
+            <div style="display:flex; gap:0.375rem;">
+              <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="closeStudentSheet()">Выйти без сохранения</button>
+              <button class="btn btn-off" style="flex:1;" onclick="cancelSheetExit()">Остаться</button>
+            </div>
+          </div>
+        ` : ''}
+        ${pendingSaveWarning ? `
+          <div style="padding:0.75rem; background:#FBEEEC; border-radius:0.625rem; margin:0.75rem 0;">
+            <div style="font-size:0.8125rem; color:#7A2E1E; margin-bottom:0.5rem;">${esc(pendingSaveWarning)}</div>
+            <div style="display:flex; gap:0.375rem;">
+              <button class="btn btn-done" style="flex:1;" onclick="saveStudentDraft(true)">Сохранить всё равно</button>
+              <button class="btn btn-off" style="flex:1;" onclick="pendingSaveWarning=null; refreshStudentSheet();">Отмена</button>
+            </div>
+          </div>
+        ` : ''}
+        <div class="filelabel" style="margin-top:0.75rem;">Имя</div>
+        <input type="text" placeholder="Имя" value="${esc(d.firstName)}" oninput="editingStudentDraft.firstName=this.value; updateStickyPreview();" style="width:100%; font-size:0.9375rem; font-weight:600; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+        <div class="filelabel">Фамилия (необязательно)</div>
+        <input type="text" placeholder="Фамилия" value="${esc(d.lastName)}" oninput="editingStudentDraft.lastName=this.value; updateStickyPreview();" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
+        <div class="filelabel">Класс</div>
+        <input type="number" min="1" max="11" placeholder="например, 9" value="${esc(d.gradeNumber)}" oninput="editingStudentDraft.gradeNumber=this.value; updateStickyPreview();" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
+        <div class="filelabel">Цвет карточки</div>
+        <div style="display:flex; gap:0.375rem; flex-wrap:wrap; margin-bottom:0.625rem;">
+          ${ACCENTS.map((a, i) => `<button title="${ACCENT_NAMES[i]}" onclick="editingStudentDraft.accent=${i}; refreshStudentSheet();" style="width:1.75rem; height:1.75rem; border-radius:999px; border:2px solid ${d.accent===i?'#1F2A3D':'transparent'}; background:${a.ink}; cursor:pointer; flex-shrink:0;">${d.accent===i?'<span style="color:#fff;font-size:0.75rem;">✓</span>':''}</button>`).join('')}
+        </div>
+        <div class="filelabel">Формат</div>
+        <div style="display:flex; gap:0.375rem; margin-bottom:0.625rem;">
+          <button onclick="editingStudentDraft.format='Онлайн'; refreshStudentSheet();" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${d.format!=='Очно'?accent.ink:'#C9D2DB'}; background:${d.format!=='Очно'?accent.soft:'#fff'}; color:${d.format!=='Очно'?accent.ink:'#8A93A0'}; cursor:pointer;">💻 Онлайн</button>
+          <button onclick="editingStudentDraft.format='Очно'; refreshStudentSheet();" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${d.format==='Очно'?accent.ink:'#C9D2DB'}; background:${d.format==='Очно'?accent.soft:'#fff'}; color:${d.format==='Очно'?accent.ink:'#8A93A0'}; cursor:pointer;">🤝 Очно</button>
+        </div>
+        <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.625rem;">Ссылки на звонок/доску видны всегда — если этот ученик обычно очный, но разово занимались онлайн, ссылка всё равно под рукой.</div>
+        <div class="field"><span>🎥</span><input type="text" placeholder="ссылка на звонок (Зум / Телемост)" value="${esc(d.callLink)}" oninput="editingStudentDraft.callLink=this.value;"><button class="iconbtn" onclick="copyText(editingStudentDraft.callLink, this)">⧉</button></div>
+        <div class="field"><span>✏️</span><input type="text" placeholder="ссылка на доску" value="${esc(d.boardLink)}" oninput="editingStudentDraft.boardLink=this.value;"><button class="iconbtn" onclick="copyText(editingStudentDraft.boardLink, this)">⧉</button></div>
+
+        <div class="filelabel" style="margin-top:0.75rem;">Контакты ребёнка</div>
+        ${studentContactGridHTML('child', d.childContacts, d.childPrimaryId)}
+        <div class="filelabel" style="margin-top:0.75rem;">Контакты родителя</div>
+        ${studentContactGridHTML('parent', d.parentContacts, d.parentPrimaryId)}
+
+        <label class="checklabel"><input type="checkbox" ${d.needsPaymentReport?'checked':''} onchange="editingStudentDraft.needsPaymentReport=this.checked;"> Родителю нужно писать про оплату после урока</label>
+
+        <div class="filelabel" style="margin-top:0.75rem;">Тарифы</div>
+        ${(d.subjects||[]).length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>' : d.subjects.map(sub=>`
+          <div class="filerow">
+            <span>💳</span>
+            <span style="flex:1; font-size:0.8125rem;">${sub.subject ? `<b>${esc(sub.subject)}:</b> ` : ''}${esc(sub.label)} · ${esc(sub.price)}</span>
+            <button class="iconbtn" onclick="removeDraftSubject('${sub.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+          </div>`).join('')}
+        ${profileSubjects.length > 1 ? `
+          <select id="draftSubjectSelect" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+            ${profileSubjects.map(sub=>`<option value="${esc(sub)}">${esc(sub)}</option>`).join('')}
+          </select>` : ''}
+        <div class="fileadd">
+          <input class="fname" type="text" id="draftSubLabel" placeholder="название (напр. ОГЭ)">
+          <input class="furl" type="text" id="draftSubPrice" placeholder="цена (напр. 2900 ₽)">
+          <button class="addfilebtn" onclick="addDraftSubject()">+</button>
+        </div>
+
+        ${isNewStudentDraft ? `
+          <div style="font-size:0.78125rem; color:#9BA3AE; margin:0.75rem 0; text-align:center;">Расписание, код входа и материалы откроются после первого сохранения</div>
+        ` : `
+          <div class="filelabel" style="margin-top:0.75rem;">Расписание</div>
+          ${renderScheduleGroups(savedStudent)}
+          <div style="display:flex; gap:0.25rem; margin-bottom:0.375rem;">
+            ${DAY_NAMES.map((name, dow) => `<span class="mat-pill ${(scheduleAddDays[savedStudent.id]||[]).includes(dow)?'picked':''}" style="flex:1; justify-content:center; padding:0.3rem 0.25rem;" onclick="toggleScheduleDay('${savedStudent.id}',${dow})">${name}</span>`).join('')}
+          </div>
+          <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+            <input type="time" id="scheduletime-${savedStudent.id}" value="16:00" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+            <input type="date" id="schedulestart-${savedStudent.id}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          </div>
+          ${(savedStudent.subjects||[]).length===0 ? `
+            <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.375rem;" onclick="focusTariffInput('${savedStudent.id}')">Тарифов пока нет — завести</button>
+          ` : `
+            <select id="scheduletariff-${savedStudent.id}" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+              <option value="">без привязки к тарифу</option>
+              ${savedStudent.subjects.map(sub=>`<option value="${sub.id}">${esc(sub.label)} · ${esc(sub.price)}</option>`).join('')}
+            </select>
+          `}
+          <button class="btn btn-done" style="width:100%; margin-bottom:0.375rem;" onclick="addScheduleGroup('${savedStudent.id}')">+ Добавить в расписание</button>
+          ${renderUpcomingLessons(savedStudent)}
+          <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.5rem; margin-bottom:0.75rem;" onclick="showCalendarView()">📅 Открыть общий календарь</button>
+
+          <div class="filelabel">Вход для ученика</div>
+          ${confirmResetAccess ? `
+            <div style="padding:0.75rem; background:#FBEEEC; border-radius:0.625rem; margin-bottom:0.5rem;">
+              <div style="font-size:0.78125rem; color:#7A2E1E; margin-bottom:0.5rem;">Старый вход перестанет действовать (если ученик его найдёт — попроси не пользоваться), и создастся новый код. Точно?</div>
+              <div style="display:flex; gap:0.375rem;">
+                <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="confirmResetAndNewCode('${savedStudent.id}')">Сбросить и создать новый</button>
+                <button class="btn btn-off" style="flex:1;" onclick="cancelResetAccess()">Отмена</button>
+              </div>
+            </div>
+          ` : savedStudent.hasAccount ? `
+            <div class="msgbox" style="align-items:center; background:#E2EFE6;">
+              <div style="flex:1; font-size:0.8125rem; color:#1F5C3A;">✅ Уже подключён — для нового предмета этому же ученику новый код не нужен, просто добавь тариф с нужным предметом выше</div>
+            </div>
+            <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; padding:0.25rem 0; margin-top:0.25rem; cursor:pointer; text-decoration:underline;" onclick="requestResetAccess()">Ребёнок потерял доступ — сбросить и выдать новый код</button>
+          ` : savedStudent.inviteCode ? `
+            <div class="msgbox" style="align-items:center;">
+              <div style="flex:1;">Код: <b style="font-family:'IBM Plex Mono',monospace; font-size:1rem;">${esc(savedStudent.inviteCode)}</b><br><span style="font-size:0.71875rem; color:#8A93A0;">Пришли этот код ученику — он вводит его один раз при создании своего аккаунта</span></div>
+              <button class="iconbtn" onclick="copyText('${esc(savedStudent.inviteCode)}', this)">⧉</button>
+              <button class="iconbtn" onclick="revokeInviteCode('${savedStudent.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+            </div>` : `
+            <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.625rem;" onclick="generateInviteCode('${savedStudent.id}')">🔑 Создать код для входа</button>`}
+
+          <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.375rem;" onclick="showMaterialsView('${savedStudent.id}')">📚 Материалы для ${esc(savedStudent.name)}</button>
+        `}
+
+        <div style="display:flex; gap:0.375rem; margin-top:1rem;">
+          <button class="btn btn-done" style="flex:1;" onclick="saveStudentDraft(false)">💾 Сохранить</button>
+          <button class="btn btn-off" style="flex:1;" onclick="requestCloseStudentSheet()">Выйти</button>
+        </div>
+        ${!isNewStudentDraft ? `<button class="delbtn" onclick="deleteStudent('${editingStudentId}')">🗑 Удалить ученика</button>` : ''}
+    `;
 }
 
 function renderOverviewView(){
@@ -339,16 +594,12 @@ function renderOverviewView(){
       ${subjectsLine ? `<div style="font-size:0.8125rem; color:#5A6472; margin-top:0.25rem;">📖 Предметы: ${esc(subjectsLine)}</div>` : ''}
     </div>
 
-    ${noAccount.length ? `
+    ${(noAccount.length || (typeof getAllUnresolvedQuestions==='function' && getAllUnresolvedQuestions().length)) ? `
     <div class="matcard" style="margin-top:0.75rem;">
-      <div class="filelabel">⚠️ Требует внимания</div>
-      <div style="font-size:0.8125rem; color:#5A6472; margin-bottom:0.5rem;">Ещё не завели свой аккаунт — не забудь прислать код:</div>
-      ${noAccount.map(s=>`
-        <div class="filerow">
-          <span>🔑</span>
-          <span style="flex:1; font-size:0.8125rem;">${esc(s.name)}</span>
-          <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; cursor:pointer; text-decoration:underline;" onclick="selectStudentFromDrawer('${s.id}')">открыть</button>
-        </div>`).join('')}
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="filelabel" style="margin:0;">⚠️ Требует внимания</div>
+        <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; cursor:pointer; text-decoration:underline;" onclick="showIssuesView()">Открыть всё</button>
+      </div>
     </div>` : ''}
 
     <div class="matcard" style="margin-top:0.75rem;">

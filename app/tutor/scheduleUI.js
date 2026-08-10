@@ -140,21 +140,6 @@ function getAllUnresolvedQuestions(){
   return items;
 }
 
-function renderUnresolvedQuestions(){
-  const items = getAllUnresolvedQuestions();
-  return `
-    <div class="filelabel" style="margin-top:1rem;">Нерешённые вопросы</div>
-    ${items.length === 0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.5rem 0;">Нерешённых вопросов нет</div>' : items.map(q => `
-      <div class="matcard">
-        <div style="font-size:0.8125rem;"><b>${esc(q.studentName)}</b> · ${esc(q.date)} ${esc(q.time)}${q.breakLabel?` · ${esc(q.breakLabel)}`:''}</div>
-        <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
-          <button class="btn btn-done" style="flex:1;" onclick="resolveBreakQuestion('${q.studentId}','${q.date}',true)">Занятие было</button>
-          <button class="btn btn-off" style="flex:1;" onclick="resolveBreakQuestion('${q.studentId}','${q.date}',false)">Не было</button>
-        </div>
-      </div>
-    `).join('')}
-  `;
-}
 function resolveBreakQuestion(sid, date, occurs){
   if(window.__fbSaveException) window.__fbSaveException(sid, date, { type:'breakResolution', occurs });
   showToast(occurs ? 'Отмечено: занятие было' : 'Отмечено: занятия не было', 'success', 3000);
@@ -168,13 +153,12 @@ function showCalendarView(){
 function renderCalendarView(){
   return `
     ${renderBreakForm()}
-    ${renderUnresolvedQuestions()}
   `;
 }
-function updateCalendarBadge(){
-  const el = document.getElementById('calendarBadge');
+function updateIssuesBadge(){
+  const el = document.getElementById('issuesBadge');
   if(!el) return;
-  const count = getAllUnresolvedQuestions().length;
+  const count = getAllUnresolvedQuestions().length + (data.students||[]).filter(s=>!s.hasAccount).length;
   el.textContent = count > 0 ? count : '';
   el.style.display = count > 0 ? 'inline-block' : 'none';
 }

@@ -17,6 +17,10 @@ let profileSubjects = [];
 let profNameValue = '';
 let profShowSubjectValue = false;
 let profShowContactsValue = false;
+function refreshProfileUI(){
+  if(onboardingSheetOpen){ const el = document.getElementById('onboardingSheetInner'); if(el) el.innerHTML = renderProfileFormFields(); return; }
+  if(viewMode==='settings') renderSettingsView();
+}
 function addProfileSubject(){
   const input = document.getElementById('newSubject');
   const value = input.value.trim();
@@ -24,15 +28,15 @@ function addProfileSubject(){
   if(profileSubjects.includes(value)){ showToast('Такой предмет уже добавлен'); return; }
   profileSubjects.push(value);
   input.value = '';
-  renderSettingsView();
+  refreshProfileUI();
 }
 function removeProfileSubject(value){
   profileSubjects = profileSubjects.filter(s => s !== value);
-  renderSettingsView();
+  refreshProfileUI();
 }
 function setPrimaryContact(id){
   profilePrimaryId = id;
-  renderSettingsView();
+  refreshProfileUI();
 }
 function addProfileContact(type){
   const input = document.getElementById('newcontact-'+type);
@@ -41,12 +45,12 @@ function addProfileContact(type){
   const newContact = { id: uid(), type, value };
   profileContacts.push(newContact);
   if(!profilePrimaryId) profilePrimaryId = newContact.id;
-  renderSettingsView();
+  refreshProfileUI();
 }
 function removeProfileContact(id){
   profileContacts = profileContacts.filter(c => c.id !== id);
   if(profilePrimaryId === id) profilePrimaryId = profileContacts[0] ? profileContacts[0].id : null;
-  renderSettingsView();
+  refreshProfileUI();
 }
 function loadProfileIntoForm(p){
   window.__profileData = p;
@@ -57,6 +61,37 @@ function loadProfileIntoForm(p){
   profShowSubjectValue = !!p.showSubject;
   profShowContactsValue = !!p.showContacts;
   if(viewMode==='settings') renderSettingsView();
+  if(window.__firstProfileCheckDone === false){
+    window.__firstProfileCheckDone = true;
+    if(!p || !p.name){ openOnboardingSheet(); }
+  }
+}
+function renderProfileFormFields(){
+  return `
+      <div class="filelabel">О себе — видно ученикам</div>
+      <input id="profName" type="text" placeholder="ФИО" value="${esc(profNameValue)}" oninput="profNameValue=this.value" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem;">Предметы</div>
+      <div id="profSubjects" style="display:flex; flex-wrap:wrap; gap:0.375rem; margin-bottom:0.375rem;">
+        ${(profileSubjects.length===0) ? '<div style="font-size:0.75rem;color:#9BA3AE;">Пока пусто</div>' : profileSubjects.map(s => `
+          <span style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.5rem 0.3rem 0.625rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#EAF0F6; color:#2C4A7C;">
+            ${esc(s)}
+            <button onclick="removeProfileSubject('${esc(s)}')" style="width:1.125rem; height:1.125rem; border-radius:999px; border:none; background:#fff; color:#C0392B; font-size:0.75rem; line-height:1; cursor:pointer;">✕</button>
+          </span>`).join('')}
+      </div>
+      <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem;">
+        <input id="newSubject" type="text" placeholder="например, Информатика" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <button onclick="addProfileSubject()" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer;">+</button>
+      </div>
+      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.75rem; cursor:pointer;">
+        <input id="profShowSubject" type="checkbox" ${profShowSubjectValue?'checked':''} onchange="profShowSubjectValue=this.checked"> Показывать предметы ученикам
+      </label>
+      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.5rem;">Контакты</div>
+      ${contactTypeGridHTML()}
+      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.5rem; cursor:pointer;">
+        <input id="profShowContacts" type="checkbox" ${profShowContactsValue?'checked':''} onchange="profShowContactsValue=this.checked"> Показывать контакты ученикам
+      </label>
+      <button onclick="saveProfile()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сохранить профиль</button>
+  `;
 }
 function contactTypeGridHTML(){
   return CONTACT_TYPE_ORDER.map(type => {
@@ -92,6 +127,33 @@ function saveProfile(){
   };
   if(window.__fbSaveProfile) window.__fbSaveProfile(profile);
   showToast('Профиль сохранён', 'success', 4000);
+  if(onboardingSheetOpen) closeOnboardingSheet();
+}
+
+// ---- Экран первого входа: предлагаем заполнить «О себе», та же механика, что у материалов/учеников ----
+let onboardingSheetOpen = false;
+function openOnboardingSheet(){
+  onboardingSheetOpen = true;
+  render();
+}
+function closeOnboardingSheet(){
+  onboardingSheetOpen = false;
+  render();
+}
+function renderOnboardingSheet(){
+  if(!onboardingSheetOpen) return '';
+  return `
+  <div class="mat-sheet-backdrop"></div>
+  <div class="mat-sheet">
+    <div style="padding:1rem 1rem 0.5rem;">
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">👋 Расскажи о себе</div>
+      <div style="font-size:0.8125rem; color:#5A6472; margin-top:0.375rem;">Эти данные увидят твои ученики. Можно заполнить сейчас, а можно пропустить и вернуться в Настройках позже.</div>
+    </div>
+    <div id="onboardingSheetInner" style="padding:0 1rem 1.5rem;">${renderProfileFormFields()}</div>
+    <div style="padding:0 1rem 1.5rem;">
+      <button class="btn btn-off" style="width:100%;" onclick="closeOnboardingSheet()">Пропустить, заполню позже</button>
+    </div>
+  </div>`;
 }
 
 let dataPanelOpen = false;
@@ -164,29 +226,7 @@ function renderSettingsView(){
     </div>
 
     <div class="matcard" style="margin-top:0.75rem;">
-      <div class="filelabel">О себе — видно ученикам</div>
-      <input id="profName" type="text" placeholder="ФИО" value="${esc(profNameValue)}" oninput="profNameValue=this.value" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.375rem;">Предметы</div>
-      <div id="profSubjects" style="display:flex; flex-wrap:wrap; gap:0.375rem; margin-bottom:0.375rem;">
-        ${(profileSubjects.length===0) ? '<div style="font-size:0.75rem;color:#9BA3AE;">Пока пусто</div>' : profileSubjects.map(s => `
-          <span style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.3rem 0.5rem 0.3rem 0.625rem; border-radius:999px; font-size:0.75rem; font-weight:600; background:#EAF0F6; color:#2C4A7C;">
-            ${esc(s)}
-            <button onclick="removeProfileSubject('${esc(s)}')" style="width:1.125rem; height:1.125rem; border-radius:999px; border:none; background:#fff; color:#C0392B; font-size:0.75rem; line-height:1; cursor:pointer;">✕</button>
-          </span>`).join('')}
-      </div>
-      <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem;">
-        <input id="newSubject" type="text" placeholder="например, Информатика" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-        <button onclick="addProfileSubject()" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer;">+</button>
-      </div>
-      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.75rem; cursor:pointer;">
-        <input id="profShowSubject" type="checkbox" ${profShowSubjectValue?'checked':''} onchange="profShowSubjectValue=this.checked"> Показывать предметы ученикам
-      </label>
-      <div style="font-size:0.71875rem; font-weight:700; color:#8A93A0; text-transform:uppercase; letter-spacing:.4px; margin-bottom:0.5rem;">Контакты</div>
-      ${contactTypeGridHTML()}
-      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin-bottom:0.5rem; cursor:pointer;">
-        <input id="profShowContacts" type="checkbox" ${profShowContactsValue?'checked':''} onchange="profShowContactsValue=this.checked"> Показывать контакты ученикам
-      </label>
-      <button onclick="saveProfile()" style="width:100%; padding:0.4375rem 0; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; font-size:0.78125rem; font-weight:600; cursor:pointer;">Сохранить профиль</button>
+      ${renderProfileFormFields()}
     </div>
 
     <div class="matcard" style="margin-top:0.75rem;">

@@ -5,10 +5,31 @@
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
   import {
     getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot,
-    collection, query, where, arrayUnion, arrayRemove
+    collection, query, where, arrayUnion, arrayRemove, orderBy, limit
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { firebaseConfig, vapidKey } from "../../assets/firebase-config.js";
   import { getMessaging, getToken as getFcmToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
+
+  let latestNotifications = [];
+  function subscribeNotifications(uid){
+    onSnapshot(query(collection(db, 'users', uid, 'notifications'), orderBy('createdAt', 'desc'), limit(50)), (snap) => {
+      latestNotifications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      window.__notifications = latestNotifications;
+      if(window.updateNotifBadge) updateNotifBadge();
+      if(viewMode === 'notifications') render();
+    }, (err) => console.error('notifications sync error', err));
+  }
+  window.__fbMarkNotificationRead = async function(id){
+    try{ await setDoc(doc(db, 'users', currentUid, 'notifications', id), { read: true }, { merge: true }); }
+    catch(e){ console.error('mark notification read failed', e); }
+  };
+  window.__fbMarkAllNotificationsRead = async function(){
+    const unread = (latestNotifications||[]).filter(n=>!n.read);
+    for(const n of unread){
+      try{ await setDoc(doc(db, 'users', currentUid, 'notifications', n.id), { read: true }, { merge: true }); }
+      catch(e){}
+    }
+  };
 
   const fbApp = initializeApp(firebaseConfig);
   const auth = getAuth(fbApp);
@@ -368,11 +389,51 @@
   }
   window.__firestoreSave = pushSaveToFirestore;
 
+  function sniffContactType(url){
+    if(/t\.me\//i.test(url) || /telegram/i.test(url)) return 'telegram';
+    if(/wa\.me\//i.test(url) || /whatsapp/i.test(url)) return 'whatsapp';
+    if(/vk\.com/i.test(url)) return 'vk';
+    if(/^tel:/i.test(url)) return 'phone';
+    if(/^mailto:/i.test(url)) return 'email';
+    return null;
+  }
+  function extractContactValue(type, url){
+    try{
+      if(type==='telegram') return url.split('t.me/')[1] || url;
+      if(type==='whatsapp') return url.split('wa.me/')[1] || url;
+      if(type==='vk'){ const m = url.match(/sel=(\d+)/); return m ? m[1] : url; }
+      if(type==='phone') return url.replace(/^tel:/,'');
+      if(type==='email') return url.replace(/^mailto:/,'');
+    }catch(e){}
+    return url;
+  }
   function migrateStudent(s){
     if(!Array.isArray(s.messengers)){ s.messengers = s.messenger ? [{id:'m1', label:'', url:s.messenger}] : []; }
     delete s.messenger;
     if(!Array.isArray(s.subjects)) s.subjects = [];
     s.subjects = s.subjects.map(sub => sub.id ? sub : { ...sub, id: uid() });
+
+    if(s.firstName === undefined){
+      const parts = (s.name||'').trim().split(/\s+/).filter(Boolean);
+      s.firstName = parts[0] || '';
+      s.lastName = parts.slice(1).join(' ') || '';
+    }
+    if(s.gradeNumber === undefined){
+      const m = (s.grade||'').match(/\d+/);
+      s.gradeNumber = m ? m[0] : '';
+    }
+    if(!s.childContacts && !s.parentContacts){
+      s.childContacts = []; s.parentContacts = [];
+      (s.messengers||[]).forEach(m => {
+        const type = sniffContactType(m.url||'');
+        if(!type) return; // не смогли распознать тип — старая запись остаётся только в messengers, не переносим
+        const value = extractContactValue(type, m.url);
+        const contact = { id: uid(), type, value };
+        if(m.for === 'parent') s.parentContacts.push(contact); else s.childContacts.push(contact);
+      });
+      if(s.childContacts.length && !s.childPrimaryId) s.childPrimaryId = s.childContacts[0].id;
+      if(s.parentContacts.length && !s.parentPrimaryId) s.parentPrimaryId = s.parentContacts[0].id;
+    }
     return s;
   }
 
@@ -525,7 +586,12 @@
       tryRender();
     }, (err) => console.error('materials sync error', err));
     onSnapshot(doc(db, 'users', uid, 'appdata', 'profile'), (snap) => {
-      if (snap.exists() && window.loadProfileIntoForm) window.loadProfileIntoForm(snap.data());
+      if (snap.exists() && window.loadProfileIntoForm) {
+        window.loadProfileIntoForm(snap.data());
+      } else if (!snap.exists() && window.__firstProfileCheckDone === false) {
+        window.__firstProfileCheckDone = true;
+        if (window.openOnboardingSheet) window.openOnboardingSheet();
+      }
     }, (err) => console.error('profile sync error', err));
     startFriendsSync(uid);
   }
@@ -534,10 +600,12 @@
     if (!user) { window.location.replace('../index.html'); return; }
     currentUid = user.uid;
     window.__currentUid = user.uid;
+    window.__firstProfileCheckDone = false;
     const accessSnap = await getDoc(doc(db, 'studentAccess', user.uid));
     if (accessSnap.exists()) { window.location.replace('student.html'); return; }
     await migrateLegacyIfNeeded(user.uid);
     startTutorSync(user.uid);
     cleanupOrphanedFiles(user.uid); // не блокирует загрузку кабинета, идёт в фоне
     registerPushTokenSilently(); // если разрешение уже было дано раньше — освежаем токен без диалога
+    subscribeNotifications(user.uid);
   });

@@ -9,6 +9,10 @@ let matSubjectFilter = 'all';
 function setMatSubjectFilter(sub){ matSubjectFilter = sub; render(); }
 let matGradeFilter = 'all';
 function setMatGradeFilter(g){ matGradeFilter = g; render(); }
+let matTypeFilter = 'all';
+function setMatTypeFilter(t){ matTypeFilter = t; render(); }
+let matFiltersExpanded = false;
+function toggleMatFiltersExpanded(){ matFiltersExpanded = !matFiltersExpanded; render(); }
 let friendMaterials = []; // populated by module script listener
 
 const TYPE_OPTIONS = ['ОГЭ','ЕГЭ','Методичка','Задание','ДЗ'];
@@ -447,6 +451,7 @@ function renderMaterialsView(){
     .filter(m => !m.archived)
     .filter(m => matSubjectFilter==='all' || m.subject === matSubjectFilter)
     .filter(m => matGradeFilter==='all' || normalizeGrades(m).includes(matGradeFilter))
+    .filter(m => matTypeFilter==='all' || (m.types||[]).includes(matTypeFilter))
     .filter(m => matTab!=='search' || !matSearchQuery.trim() || (m.name||'').toLowerCase().includes(matSearchQuery.trim().toLowerCase()));
 
   const mineList = applyFilters(data.materials || []);
@@ -466,10 +471,20 @@ function renderMaterialsView(){
       ${profileSubjects.map(sub=>`<span class="mat-pill ${matSubjectFilter===sub?'picked':''}" onclick="setMatSubjectFilter('${esc(sub)}')">${esc(sub)}</span>`).join('')}
     </div>` : '';
   const gradeFilterHtml = allGrades.length > 1 ? `
-    <div style="display:flex; gap:0.375rem; margin-bottom:0.75rem; flex-wrap:wrap;">
+    <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem; flex-wrap:wrap;">
       <span class="mat-pill ${matGradeFilter==='all'?'picked':''}" onclick="setMatGradeFilter('all')">Все классы</span>
       ${allGrades.map(g=>`<span class="mat-pill ${matGradeFilter===g?'picked':''}" onclick="setMatGradeFilter('${esc(g)}')">${esc(g)}</span>`).join('')}
     </div>` : '';
+  const typeFilterHtml = `
+    <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem; flex-wrap:wrap;">
+      <span class="mat-pill ${matTypeFilter==='all'?'picked':''}" onclick="setMatTypeFilter('all')">Все типы</span>
+      ${TYPE_OPTIONS.map(t=>`<span class="mat-pill ${matTypeFilter===t?'picked':''}" onclick="setMatTypeFilter('${esc(t)}')">${esc(t)}</span>`).join('')}
+    </div>`;
+  const extraFiltersHtml = `
+    <div style="margin-bottom:0.75rem;">
+      <button onclick="toggleMatFiltersExpanded()" class="mat-pill">⚙ Фильтры ${matFiltersExpanded?'▴':'▾'}</button>
+      ${matFiltersExpanded ? `<div style="margin-top:0.5rem;">${gradeFilterHtml}${typeFilterHtml}</div>` : ''}
+    </div>`;
 
   const tabs = [
     {id:'mine', label:'Личное'},
@@ -505,7 +520,7 @@ function renderMaterialsView(){
   } else if(matTab === 'friends'){
     bodyHtml = `
       <button class="btn btn-done" style="width:100%; margin-bottom:0.75rem;" onclick="openAddForm()">+ Добавить материал</button>
-      ${gradeFilterHtml}${subjectFilterHtml}
+      ${subjectFilterHtml}${extraFiltersHtml}
       ${friendsListFiltered.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пока никто ничем не поделился</div>' : friendsListFiltered.map(m => `
       <div class="matcard">
         <div style="display:flex; align-items:center; gap:0.5rem;">
@@ -519,7 +534,7 @@ function renderMaterialsView(){
   } else if(matTab === 'search'){
     bodyHtml = `
       <input type="text" placeholder="искать по названию…" value="${esc(matSearchQuery)}" oninput="setMatSearchQuery(this.value)" style="width:100%; font-size:0.875rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
-      ${gradeFilterHtml}${subjectFilterHtml}
+      ${subjectFilterHtml}${extraFiltersHtml}
       ${groupHtml('Личные — Разбираем', '📖', discussList)}
       ${groupHtml('Личные — Тренируемся', '🏋️', practiceList)}
       ${friendsListFiltered.length ? groupHtml('От друзей', '🤝', friendsListFiltered) : ''}
@@ -527,7 +542,7 @@ function renderMaterialsView(){
   } else { // mine
     bodyHtml = `
       <button class="btn btn-done" style="width:100%; margin-bottom:0.75rem;" onclick="openAddForm()">+ Добавить материал</button>
-      ${gradeFilterHtml}${subjectFilterHtml}
+      ${subjectFilterHtml}${extraFiltersHtml}
       ${groupHtml('Разбираем', '📖', discussList)}
       ${groupHtml('Тренируемся', '🏋️', practiceList)}
     `;
