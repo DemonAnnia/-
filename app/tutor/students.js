@@ -376,6 +376,8 @@ function deleteScheduleGroup(sid, ruleIdsJoined){
   });
 }
 
+let studentSearchQuery = '';
+function setStudentSearchQuery(v){ studentSearchQuery = v; render(); }
 let studentSubjectFilter = 'all';
 function setStudentSubjectFilter(v){ studentSubjectFilter = v; render(); }
 let studentGradeFilter = 'all';
@@ -496,7 +498,36 @@ function sendContactChip(id, contactId){
   }
 }
 
-function cardHTML(s, isFirst, isLast){
+function studentHasIssue(s){
+  if(!s.hasAccount) return true;
+  if(window.getUnresolvedQuestions){
+    const todayStr = fmtDate(new Date());
+    const farStr = fmtDate(new Date(Date.now() + 60*86400000));
+    if(getUnresolvedQuestions(s.scheduleRules||[], s.scheduleExceptions||[], s.scheduleBreaks||[], todayStr, farStr).length) return true;
+  }
+  return false;
+}
+function compactStudentRow(s, isFirst, isLast){
+  const accent = ACCENTS[s.accent] || ACCENTS[0];
+  if(reorderMode){
+    return `
+    <div class="filerow" style="background:${accent.soft};">
+      <div class="dot" style="background:${accent.ink}; flex-shrink:0;"></div>
+      <span style="flex:1; font-size:0.875rem; font-weight:600;">${esc(s.name)}</span>
+      <span style="font-size:0.78125rem; color:#8A93A0; margin-right:0.5rem;">${esc(s.grade)}</span>
+      <button class="iconbtn" ${isFirst?'disabled style="opacity:.3;"':''} onclick="moveStudent('${s.id}',-1)">↑</button>
+      <button class="iconbtn" ${isLast?'disabled style="opacity:.3;"':''} onclick="moveStudent('${s.id}',1)">↓</button>
+    </div>`;
+  }
+  return `
+    <div class="filerow" style="cursor:pointer; background:${accent.soft};" onclick="selectStudentFromDrawer('${s.id}')">
+      <div class="dot" style="background:${accent.ink}; flex-shrink:0;"></div>
+      <span style="flex:1; font-size:0.875rem; font-weight:600;">${esc(s.name)}</span>
+      <span style="font-size:0.78125rem; color:#8A93A0;">${esc(s.grade)} · ${esc(s.format)}</span>
+      ${studentHasIssue(s) ? '<span title="Требует внимания" style="margin-left:0.375rem;">⚠️</span>' : ''}
+    </div>`;
+}
+function cardHTML(s){
     const accent = ACCENTS[s.accent] || ACCENTS[0];
     const tags = (s.subjects||[]).map(sub=>`<span class="tag">${sub.subject ? esc(sub.subject)+': ' : ''}${esc(sub.label)} · ${tariffLabel(sub)}</span>`).join('');
     const studentTheme = studentThemes[s.id];
@@ -506,24 +537,6 @@ function cardHTML(s, isFirst, isLast){
     const contacts = allStudentContacts(s);
     const primary = primaryStudentContact(s);
     const others = contacts.filter(c => !primary || c.id !== primary.id);
-    if(reorderMode){
-      return `
-    <div class="card">
-      <div class="card-head" style="background:${accent.soft};">
-        <div style="position:relative; flex-shrink:0;">
-          <div class="dot" style="background:${accent.ink}"></div>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div class="name">${esc(s.name)}</div>
-          <div class="meta">${esc(s.grade)} · ${esc(s.format)}</div>
-        </div>
-        <div style="display:flex; gap:0.25rem;">
-          <button class="iconbtn" ${isFirst?'disabled style="opacity:.3;"':''} onclick="moveStudent('${s.id}',-1)">↑</button>
-          <button class="iconbtn" ${isLast?'disabled style="opacity:.3;"':''} onclick="moveStudent('${s.id}',1)">↓</button>
-        </div>
-      </div>
-    </div>`;
-    }
     return `
     <div class="card">
       <div class="card-head" style="background:${accent.soft}" onclick="openEditStudentSheet('${s.id}')">
@@ -542,7 +555,6 @@ function cardHTML(s, isFirst, isLast){
         <div class="row">
           <a class="btn ${s.callLink?'':'btn-off'}" href="${s.callLink?esc(s.callLink):'#'}" target="_blank" style="background:${s.callLink?'#1F2A3D':''};color:${s.callLink?'#fff':''}" onclick="${s.callLink?'':'return false;'}">🎥 Звонок</a>
           <a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?'#C0392B':''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>
-          <button class="btn btn-done" onclick="markDone('${s.id}')">✓ Урок прошёл</button>
         </div>
         ${primary ? `
         <div style="display:flex; gap:0.375rem; margin-top:8px;">
@@ -676,6 +688,36 @@ function renderStudentSheetInner(d){
     `;
 }
 
+function renderTodayChecklist(){
+  const todayStr = fmtDate(new Date());
+  const lessons = getFilteredLessonsInRange(todayStr, todayStr).filter(l=>l.status!=='skipped');
+  if(lessons.length === 0) return '';
+  return `
+    <div class="filelabel" style="margin-top:0.75rem;">Сегодня</div>
+    ${lessons.map(l => {
+      const student = data.students.find(s=>s.id===l.studentId);
+      const notesList = student ? (student.scheduleNotesList||[]) : [];
+      const todayNote = notesList.find(n=>n.date===l.date);
+      const materialsOk = !!(todayNote && ((todayNote.lessonMaterialIds||[]).length || (todayNote.homeworkMaterialIds||[]).length));
+      const pastNotes = notesList.filter(n=>n.date<l.date).sort((a,b)=>b.date.localeCompare(a.date));
+      const lastPast = pastNotes[0];
+      const homeworkWasSet = lastPast ? !!((lastPast.homework||'').trim()) : null;
+      return `
+        <div class="matcard" style="cursor:pointer; margin-bottom:0.5rem;" onclick="openSpecificLessonDetail('${l.date}','${l.studentId}')">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="width:0.5rem;height:0.5rem;border-radius:999px;background:${l.accent.ink};flex-shrink:0;"></span>
+            <b style="font-size:0.875rem;">${esc(l.studentName)}</b>
+            <span style="font-size:0.8125rem; color:#5A6472;">${esc(l.time)}</span>
+            ${l.status==='pending'?'<span style="font-size:0.75rem; color:#B5651D;">(уточняется)</span>':''}
+          </div>
+          <div style="display:flex; gap:0.75rem; margin-top:0.375rem; font-size:0.75rem; flex-wrap:wrap;">
+            <span style="color:${materialsOk?'#2E7D4F':'#B5651D'};">${materialsOk?'✅':'⚠️'} материалы ${materialsOk?'прикреплены':'не прикреплены'}</span>
+            ${lastPast ? `<span style="color:${homeworkWasSet?'#2E7D4F':'#B5651D'};">${homeworkWasSet?'✅':'⚠️'} домашка с прошлого раза ${homeworkWasSet?'задана':'не задана'}</span>` : ''}
+          </div>
+        </div>`;
+    }).join('')}
+  `;
+}
 function renderOverviewView(){
   const students = (data.students || []).filter(s=>!s.archived);
   const online = students.filter(s=>s.format!=='Очно').length;
@@ -687,6 +729,7 @@ function renderOverviewView(){
   const subjectsLine = profileSubjects.length ? profileSubjects.join(' · ') : '';
 
   return `
+    ${window.renderTodayChecklist ? renderTodayChecklist() : ''}
     ${window.renderNextLessonLine ? renderNextLessonLine() : ''}
     ${window.renderWeekGrid ? renderWeekGrid() : ''}
     <div class="matcard">
@@ -718,6 +761,38 @@ function renderOverviewView(){
 }
 
 // ---- Полноэкранная карточка одного ученика: материалы + расписание + журнал занятий ----
+function togglePinMaterial(materialId, studentId){
+  const m = (data.materials||[]).find(x=>x.id===materialId);
+  if(!m) return;
+  if(!m.pinnedFor) m.pinnedFor = [];
+  const i = m.pinnedFor.indexOf(studentId);
+  if(i>=0) m.pinnedFor.splice(i,1); else m.pinnedFor.push(studentId);
+  if(window.__fbUpsertMaterial) window.__fbUpsertMaterial(m);
+  render();
+}
+function renderPinnedMaterialsSection(s){
+  const all = materialsFor(s.id);
+  const pinned = all.filter(m => (m.pinnedFor||[]).includes(s.id));
+  const unpinned = all.filter(m => !(m.pinnedFor||[]).includes(s.id));
+  return `
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">📌 Постоянные материалы</div>
+      <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.5rem;">То, чем пользуетесь почти каждый раз — учебник, рабочая тетрадь и т.п. Всегда под рукой, не нужно искать в общем списке.</div>
+      ${pinned.length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока нет закреплённых</div>' : pinned.map(m=>`
+        <div class="filerow">
+          <span>${materialIcon(m.url)}</span>
+          <a href="${esc(m.url)}" target="_blank" style="flex:1; font-size:0.8125rem; color:#2C4A7C;">${esc(m.name||m.url)}</a>
+          <button class="iconbtn" onclick="togglePinMaterial('${m.id}','${s.id}')" title="Открепить" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+        </div>`).join('')}
+      ${unpinned.length ? `
+        <div style="font-size:0.71875rem; color:#8A93A0; margin-top:0.5rem; margin-bottom:0.25rem;">Закрепить что-то из остального:</div>
+        <div style="display:flex; flex-wrap:wrap; gap:0.375rem;">
+          ${unpinned.map(m=>`<span class="mat-pill" onclick="togglePinMaterial('${m.id}','${s.id}')">📌 ${esc(m.name||m.url)}</span>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
 function renderStudentFocusedDetail(s){
   if(!s) return '';
   const notesList = (s.scheduleNotesList || [])
@@ -725,6 +800,7 @@ function renderStudentFocusedDetail(s){
     .sort((a,b) => b.date.localeCompare(a.date));
 
   return `
+    ${renderPinnedMaterialsSection(s)}
     <div class="matcard" style="margin-top:0.75rem;">
       <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250;" onclick="showMaterialsView('${s.id}')">📚 Материалы для ${esc(s.name)}</button>
     </div>

@@ -34,7 +34,7 @@ function renderLessonRow(s, l){
 function renderUpcomingLessons(s){
   const today = fmtDate(new Date());
   const toD = new Date(); toD.setDate(toD.getDate() + 14);
-  const lessons = getLessons(s.scheduleRules||[], s.scheduleExceptions||[], s.scheduleBreaks||[], today, fmtDate(toD));
+  const lessons = getLessons(s.scheduleRules||[], s.scheduleExceptions||[], s.scheduleBreaks||[], today, fmtDate(toD)).filter(l => !isDayOff(l.date));
   if((s.scheduleRules||[]).length === 0) return '';
   return `
     <div class="filelabel" style="margin-top:0.75rem;">Ближайшие занятия (14 дней)</div>
@@ -65,21 +65,34 @@ function cancelLessonDate(sid, date){
   render();
 }
 
-// -- Экран «Календарь»: каникулы (групповой ввод) + нерешённые вопросы --
+// -- Экран «Календарь»: каникулы (групповой ввод, выезжающий экран) + нерешённые вопросы --
 
+let breakSheetOpen = false;
 let breakStudentIds = [];
+function openBreakSheet(){
+  breakSheetOpen = true;
+  breakStudentIds = [];
+  render();
+}
+function closeBreakSheet(){
+  breakSheetOpen = false;
+  render();
+}
+function refreshBreakSheet(){
+  if(!breakSheetOpen) return;
+  const el = document.getElementById('breakSheetInner');
+  if(el) el.innerHTML = renderBreakFormInner();
+}
 function toggleBreakStudent(id){
   const i = breakStudentIds.indexOf(id);
   if(i>=0) breakStudentIds.splice(i,1); else breakStudentIds.push(id);
-  render();
+  refreshBreakSheet();
 }
 
-function renderBreakForm(){
+function renderBreakFormInner(){
   return `
-    <div class="matcard">
-      <div class="filelabel">Добавить каникулы</div>
       <div class="mat-picker" style="margin-bottom:0.5rem;">
-        ${data.students.map(s=>`<span class="mat-pill ${breakStudentIds.includes(s.id)?'picked':''}" onclick="toggleBreakStudent('${s.id}')">${esc(s.name)}</span>`).join('')}
+        ${data.students.filter(s=>!s.archived).map(s=>`<span class="mat-pill ${breakStudentIds.includes(s.id)?'picked':''}" onclick="toggleBreakStudent('${s.id}')">${esc(s.name)}</span>`).join('')}
       </div>
       <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
         <input type="date" id="breakFrom" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
@@ -87,8 +100,19 @@ function renderBreakForm(){
       </div>
       <input type="text" id="breakLabelInput" placeholder="подпись (например, Осенние каникулы)" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
       <button class="btn btn-done" style="width:100%;" onclick="submitBreakForm()">+ Добавить</button>
-    </div>
   `;
+}
+function renderBreakSheet(){
+  if(!breakSheetOpen) return '';
+  return `
+  <div class="mat-sheet-backdrop" onclick="closeBreakSheet()"></div>
+  <div class="mat-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">🏖 Добавить каникулы</div>
+      <button class="hamburger" onclick="closeBreakSheet()">✕</button>
+    </div>
+    <div id="breakSheetInner" style="padding:0 1rem 1.5rem;">${renderBreakFormInner()}</div>
+  </div>`;
 }
 
 function submitBreakForm(){
@@ -119,12 +143,57 @@ function submitBreakForm(){
     if(totalNew > 0) showToast(`Появились новые вопросы по расписанию: ${totalNew}`, 'info', 6000);
   }, 1200);
 
-  breakStudentIds = [];
-  document.getElementById('breakFrom').value = '';
-  document.getElementById('breakTo').value = '';
-  document.getElementById('breakLabelInput').value = '';
   showToast('Каникулы добавлены', 'success', 3000);
+  closeBreakSheet();
+}
+
+// -- «Мои выходные»: недоступность на диапазон дат, касается всех сразу, без уточнений --
+let dayOffSheetOpen = false;
+function openDayOffSheet(){
+  dayOffSheetOpen = true;
   render();
+}
+function closeDayOffSheet(){
+  dayOffSheetOpen = false;
+  render();
+}
+function submitDayOffForm(){
+  const from = document.getElementById('dayOffFrom').value;
+  const to = document.getElementById('dayOffTo').value;
+  if(!from || !to){ showToast('Укажи диапазон дат'); return; }
+  const label = document.getElementById('dayOffLabelInput').value.trim();
+  if(window.__fbSaveDayOff) window.__fbSaveDayOff({ from, to, label: label || null });
+  showToast('Отмечено — занятия в эти дни у всех учеников отменены', 'success', 4000);
+  closeDayOffSheet();
+}
+function renderDayOffSheet(){
+  if(!dayOffSheetOpen) return '';
+  return `
+  <div class="mat-sheet-backdrop" onclick="closeDayOffSheet()"></div>
+  <div class="mat-sheet">
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
+      <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">🚫 Отметить недоступность</div>
+      <button class="hamburger" onclick="closeDayOffSheet()">✕</button>
+    </div>
+    <div style="padding:0 1rem 1.5rem;">
+      <div style="font-size:0.78125rem; color:#9BA3AE; margin-bottom:0.5rem;">Занятия у всех учеников в этот диапазон сразу считаются отменёнными — без «уточняется», решать нечего.</div>
+      <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
+        <input type="date" id="dayOffFrom" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <input type="date" id="dayOffTo" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+      </div>
+      <input type="text" id="dayOffLabelInput" placeholder="подпись (необязательно, например Отпуск)" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+      <button class="btn btn-done" style="width:100%;" onclick="submitDayOffForm()">+ Отметить</button>
+      ${(window.__daysOff||[]).length ? `
+        <div class="filelabel" style="margin-top:0.75rem;">Уже отмечено</div>
+        ${window.__daysOff.map(d=>`
+          <div class="filerow">
+            <span>🚫</span>
+            <span style="flex:1; font-size:0.8125rem;">${esc(fmtDateRu(d.from))} — ${esc(fmtDateRu(d.to))}${d.label?` · ${esc(d.label)}`:''}</span>
+            <button class="iconbtn" onclick="window.__fbDeleteDayOff('${d.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+          </div>`).join('')}
+      ` : ''}
+    </div>
+  </div>`;
 }
 
 function getAllUnresolvedQuestions(){
@@ -133,7 +202,7 @@ function getAllUnresolvedQuestions(){
   const toStr = fmtDate(toD);
   let items = [];
   (data.students||[]).filter(s=>!s.archived).forEach(s => {
-    const qs = getUnresolvedQuestions(s.scheduleRules||[], s.scheduleExceptions||[], s.scheduleBreaks||[], today, toStr);
+    const qs = getUnresolvedQuestions(s.scheduleRules||[], s.scheduleExceptions||[], s.scheduleBreaks||[], today, toStr).filter(q => !isDayOff(q.date));
     qs.forEach(q => items.push({ ...q, studentId: s.id, studentName: s.name }));
   });
   items.sort((a,b) => a.date.localeCompare(b.date));
@@ -157,6 +226,10 @@ function shiftCalendarMonth(delta){
 function mondayIndex(jsDay){ return jsDay===0 ? 6 : jsDay-1; }
 function daysInMonth(year, month){ return new Date(year, month+1, 0).getDate(); }
 
+function isDayOff(dateStr){
+  return (window.__daysOff||[]).some(d => dateStr >= d.from && dateStr <= d.to);
+}
+
 function getFilteredLessonsInRange(dateFromStr, dateToStr){
   const students = (data.students||[]).filter(s=>!s.archived);
   let results = [];
@@ -164,6 +237,7 @@ function getFilteredLessonsInRange(dateFromStr, dateToStr){
     if(calendarFilterValue.startsWith('student:') && calendarFilterValue.slice(8) !== s.id) return;
     const lessons = getLessons(s.scheduleRules||[], s.scheduleExceptions||[], s.scheduleBreaks||[], dateFromStr, dateToStr);
     lessons.forEach(l => {
+      if(isDayOff(l.date)) return;
       if(calendarFilterValue.startsWith('subject:')){
         const subj = calendarFilterValue.slice(8);
         const tariff = (s.subjects||[]).find(sub=>sub.id===l.subjectId);
@@ -207,9 +281,10 @@ function renderMonthGrid(){
     const dateStr = fmtDate(new Date(year, month, day));
     const dayLessons = byDate[dateStr] || [];
     const isToday = dateStr === todayStr;
+    const dayOff = isDayOff(dateStr);
     cells.push(`
-      <div class="cal-cell ${isToday?'cal-cell-today':''}" ${dayLessons.length?`onclick="showDayLessons('${dateStr}')"`:''}>
-        <div class="cal-daynum">${day}</div>
+      <div class="cal-cell ${isToday?'cal-cell-today':''} ${dayOff?'cal-cell-dayoff':''}" style="cursor:${dayOff?'default':'pointer'};" ${dayOff?'':`onclick="${dayLessons.length?`showDayLessons('${dateStr}')`:`openAddLessonSheet('${dateStr}')`}"`}>
+        <div class="cal-daynum">${day}${dayOff?' 🚫':''}</div>
         <div class="cal-chips">
           ${dayLessons.slice(0,4).map(l=>`<span class="cal-chip" style="background:${l.accent.ink};" title="${esc(l.studentName)} · ${esc(l.time)}">${esc((l.studentName||'?').trim().charAt(0).toUpperCase())}</span>`).join('')}
           ${dayLessons.length>4 ? `<span style="font-size:0.5rem;color:#9BA3AE;">+${dayLessons.length-4}</span>` : ''}
@@ -279,13 +354,14 @@ function renderWeekGrid(){
         const dateStr = fmtDate(d);
         const dayLessons = (byDate[dateStr]||[]).sort((a,b)=>a.time.localeCompare(b.time));
         const isToday = dateStr === todayStr;
-        return `<div class="matcard" style="min-width:8rem; flex-shrink:0; ${isToday?'border:1.5px solid #1F2A3D;':''}">
-          <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.375rem;">${DAY_NAMES[DAY_ORDER[i]]}, ${d.getDate()}</div>
-          ${dayLessons.length===0 ? '<div style="font-size:0.75rem;color:#C9D2DB;">—</div>' : dayLessons.map(l=>`
+        const dayOff = isDayOff(dateStr);
+        return `<div class="matcard" style="min-width:8rem; flex-shrink:0; ${dayOff?'background:#2D2D2D; color:#fff;':''} ${isToday && !dayOff?'border:1.5px solid #1F2A3D;':''}">
+          <div style="font-size:0.71875rem; color:${dayOff?'#C9D2DB':'#9BA3AE'}; margin-bottom:0.375rem;">${DAY_NAMES[DAY_ORDER[i]]}, ${d.getDate()}</div>
+          ${dayOff ? '<div style="font-size:0.75rem;">🚫 Выходной</div>' : (dayLessons.length===0 ? '<div style="font-size:0.75rem;color:#C9D2DB;">—</div>' : dayLessons.map(l=>`
             <div onclick="showDayLessons('${dateStr}')" style="display:flex; align-items:center; gap:0.375rem; padding:0.1875rem 0; cursor:pointer;">
               <span style="width:0.4375rem;height:0.4375rem;border-radius:999px;background:${l.accent.ink};flex-shrink:0;"></span>
               <span style="font-size:0.75rem;">${esc(l.time)} ${esc(l.studentName)}</span>
-            </div>`).join('')}
+            </div>`).join(''))}
         </div>`;
       }).join('')}
     </div>
@@ -305,10 +381,21 @@ function showDayLessons(dateStr){
   daySheetDate = dateStr;
   daySheetOpen = true;
   showRescheduleInDaySheet = false;
-  lessonNotesDraft = { topic:'', description:'', homework:'', materialIds:[] };
+  confirmEndRecurrence = false;
+  lessonNotesDraft = { topic:'', description:'', homework:'', lessonMaterialIds:[], homeworkMaterialIds:[] };
   daySheetStudentId = lessons.length === 1 ? lessons[0].studentId : null;
   render(); // создаёт обёртку — единственный раз, при первом открытии
   if(daySheetStudentId) loadLessonNotesInto(daySheetStudentId);
+}
+function openSpecificLessonDetail(dateStr, studentId){
+  daySheetDate = dateStr;
+  daySheetOpen = true;
+  showRescheduleInDaySheet = false;
+  confirmEndRecurrence = false;
+  lessonNotesDraft = { topic:'', description:'', homework:'', lessonMaterialIds:[], homeworkMaterialIds:[] };
+  daySheetStudentId = studentId;
+  render();
+  loadLessonNotesInto(studentId);
 }
 function closeDaySheet(){
   daySheetOpen = false;
@@ -316,19 +403,22 @@ function closeDaySheet(){
   daySheetStudentId = null;
   lessonNotesDraft = null;
   showRescheduleInDaySheet = false;
+  confirmEndRecurrence = false;
   render();
 }
 function backToDayList(){
   daySheetStudentId = null;
   lessonNotesDraft = null;
   showRescheduleInDaySheet = false;
+  confirmEndRecurrence = false;
   refreshDaySheet();
 }
 function openLessonDetail(studentId){
   // вызывается из уже открытой панели (список занятий этого дня) — обёртка уже существует, полный render() не нужен
   daySheetStudentId = studentId;
   showRescheduleInDaySheet = false;
-  lessonNotesDraft = { topic:'', description:'', homework:'', materialIds:[] };
+  confirmEndRecurrence = false;
+  lessonNotesDraft = { topic:'', description:'', homework:'', lessonMaterialIds:[], homeworkMaterialIds:[] };
   refreshDaySheet();
   loadLessonNotesInto(studentId);
 }
@@ -336,7 +426,11 @@ async function loadLessonNotesInto(studentId){
   if(window.__fbLoadLessonNotes){
     const existing = await window.__fbLoadLessonNotes(studentId, daySheetDate);
     if(existing && daySheetStudentId === studentId){
-      lessonNotesDraft = { topic: existing.topic||'', description: existing.description||'', homework: existing.homework||'', materialIds: existing.materialIds||[] };
+      lessonNotesDraft = {
+        topic: existing.topic||'', description: existing.description||'', homework: existing.homework||'',
+        lessonMaterialIds: existing.lessonMaterialIds || existing.materialIds || [],
+        homeworkMaterialIds: existing.homeworkMaterialIds || [],
+      };
       refreshDaySheet();
     }
   }
@@ -346,9 +440,10 @@ function refreshDaySheet(){
   const el = document.getElementById('daySheetInner');
   if(el) el.innerHTML = renderDaySheetInner();
 }
-function toggleLessonMaterial(materialId, checked){
-  if(checked){ if(!lessonNotesDraft.materialIds.includes(materialId)) lessonNotesDraft.materialIds.push(materialId); }
-  else { lessonNotesDraft.materialIds = lessonNotesDraft.materialIds.filter(id=>id!==materialId); }
+function toggleLessonMaterial(kind, materialId, checked){
+  const key = kind === 'homework' ? 'homeworkMaterialIds' : 'lessonMaterialIds';
+  if(checked){ if(!lessonNotesDraft[key].includes(materialId)) lessonNotesDraft[key].push(materialId); }
+  else { lessonNotesDraft[key] = lessonNotesDraft[key].filter(id=>id!==materialId); }
 }
 async function saveLessonNotes(){
   const topicEl = document.getElementById('lessonTopicInput');
@@ -366,6 +461,7 @@ function openRescheduleFromDaySheet(){
 }
 function cancelRescheduleFromDaySheet(){
   showRescheduleInDaySheet = false;
+  confirmEndRecurrence = false;
   refreshDaySheet();
 }
 function confirmRescheduleFromDaySheet(){
@@ -379,6 +475,28 @@ function confirmRescheduleFromDaySheet(){
 function cancelLessonFromDaySheet(){
   if(window.__fbSaveException) window.__fbSaveException(daySheetStudentId, daySheetDate, { type:'cancelled' });
   showToast('Занятие отменено', 'success', 3000);
+  closeDaySheet();
+}
+let confirmEndRecurrence = false;
+function requestEndRecurrence(){
+  confirmEndRecurrence = true;
+  refreshDaySheet();
+}
+function cancelEndRecurrence(){
+  confirmEndRecurrence = false;
+  refreshDaySheet();
+}
+function confirmEndRecurrenceHere(){
+  const student = data.students.find(s=>s.id===daySheetStudentId);
+  const lesson = getFilteredLessonsInRange(daySheetDate, daySheetDate).find(l=>l.studentId===daySheetStudentId);
+  if(!student || !lesson || lesson.source !== 'rule' || !lesson.ruleId){
+    showToast('Это занятие не из регулярного правила — закончить серию тут не получится');
+    return;
+  }
+  const rule = (student.scheduleRules||[]).find(r=>r.id===lesson.ruleId);
+  if(!rule){ showToast('Не нашла правило'); return; }
+  if(window.__fbSaveRule) window.__fbSaveRule(daySheetStudentId, { ...rule, endDate: daySheetDate });
+  showToast('Готово — это занятие последнее в серии, дальше по этому правилу больше не будет', 'success', 5000);
   closeDaySheet();
 }
 
@@ -399,7 +517,7 @@ function renderDaySheetInner(){
 
   const student = data.students.find(s=>s.id===daySheetStudentId);
   const lesson = dayLessons.find(l=>l.studentId===daySheetStudentId);
-  const d = lessonNotesDraft || { topic:'', description:'', homework:'', materialIds:[] };
+  const d = lessonNotesDraft || { topic:'', description:'', homework:'', lessonMaterialIds:[], homeworkMaterialIds:[] };
   const materials = student ? materialsFor(student.id) : [];
 
   return `
@@ -415,12 +533,23 @@ function renderDaySheetInner(){
     <div class="filelabel">Домашнее задание</div>
     <textarea id="lessonHomeworkInput" placeholder="что задано на дом" style="width:100%; min-height:3.5rem; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem; font-family:inherit; resize:vertical;">${esc(d.homework)}</textarea>
 
-    <div class="filelabel">Материалы к этому занятию</div>
+    <div class="filelabel">Материалы к уроку</div>
     ${materials.length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">У ученика пока нет материалов — добавь в разделе «Материалы»</div>' : `
       <div style="display:flex; flex-direction:column; gap:0.25rem; margin-bottom:0.5rem;">
         ${materials.map(m => `
           <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.78125rem; cursor:pointer;">
-            <input type="checkbox" ${d.materialIds.includes(m.id)?'checked':''} onchange="toggleLessonMaterial('${m.id}', this.checked)">
+            <input type="checkbox" ${d.lessonMaterialIds.includes(m.id)?'checked':''} onchange="toggleLessonMaterial('lesson','${m.id}', this.checked)">
+            <span>${materialIcon(m.url)}</span> ${esc(m.name||m.url)}
+          </label>`).join('')}
+      </div>
+    `}
+
+    <div class="filelabel">Материалы к домашке</div>
+    ${materials.length===0 ? '' : `
+      <div style="display:flex; flex-direction:column; gap:0.25rem; margin-bottom:0.5rem;">
+        ${materials.map(m => `
+          <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.78125rem; cursor:pointer;">
+            <input type="checkbox" ${d.homeworkMaterialIds.includes(m.id)?'checked':''} onchange="toggleLessonMaterial('homework','${m.id}', this.checked)">
             <span>${materialIcon(m.url)}</span> ${esc(m.name||m.url)}
           </label>`).join('')}
       </div>
@@ -430,7 +559,15 @@ function renderDaySheetInner(){
 
     ${lesson && lesson.status !== 'skipped' ? `
       <div class="filelabel">Это занятие</div>
-      ${showRescheduleInDaySheet ? `
+      ${confirmEndRecurrence ? `
+        <div style="padding:0.625rem; background:#FBEEEC; border-radius:0.625rem; margin-bottom:0.375rem;">
+          <div style="font-size:0.78125rem; color:#7A2E1E; margin-bottom:0.5rem;">Это занятие останется последним — дальше по этому правилу занятия перестанут появляться (прошлые не трогаем). Точно?</div>
+          <div style="display:flex; gap:0.375rem;">
+            <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="confirmEndRecurrenceHere()">Да, закончить здесь</button>
+            <button class="btn btn-off" style="flex:1;" onclick="cancelEndRecurrence()">Отмена</button>
+          </div>
+        </div>
+      ` : showRescheduleInDaySheet ? `
         <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
           <input type="date" id="daySheetReschedDate" value="${esc(daySheetDate)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
           <input type="time" id="daySheetReschedTime" value="${esc(lesson.time)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
@@ -440,10 +577,13 @@ function renderDaySheetInner(){
           <button class="btn btn-off" style="flex:1;" onclick="cancelRescheduleFromDaySheet()">Отмена</button>
         </div>
       ` : `
-        <div style="display:flex; gap:0.375rem;">
+        <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
           <button class="btn" style="flex:1; background:#F1F3F5; color:#3A4250;" onclick="openRescheduleFromDaySheet()">↪️ Перенести</button>
           <button class="btn" style="flex:1; background:#FBEEEC; color:#C0392B;" onclick="cancelLessonFromDaySheet()">✕ Отменить</button>
         </div>
+        ${lesson.source === 'rule' ? `
+          <button class="btn" style="width:100%; background:#F6F7F5; color:#5A6472;" onclick="requestEndRecurrence()">🛑 Закончить серию здесь — дальше не повторять</button>
+        ` : ''}
       `}
     ` : ''}
   `;
@@ -466,11 +606,13 @@ let addLessonSheetOpen = false;
 let addLessonStudentId = null;
 let addLessonRepeat = 'none'; // 'none' | 'weekly' | 'custom'
 let addLessonDays = []; // используется только при repeat='custom'
-function openAddLessonSheet(){
+let addLessonPrefilledDate = null;
+function openAddLessonSheet(prefilledDate){
   addLessonSheetOpen = true;
   addLessonStudentId = null;
   addLessonRepeat = 'none';
   addLessonDays = [];
+  addLessonPrefilledDate = prefilledDate || null;
   render();
 }
 function closeAddLessonSheet(){
@@ -524,7 +666,7 @@ async function confirmAddLesson(){
 }
 function renderAddLessonSheetInner(){
   const student = data.students.find(s=>s.id===addLessonStudentId);
-  const todayStr = fmtDate(new Date());
+  const todayStr = addLessonPrefilledDate || fmtDate(new Date());
   return `
       <div class="filelabel">Ученик</div>
       <select onchange="setAddLessonStudent(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
@@ -592,8 +734,11 @@ function renderCalendarView(){
     ${renderWeekGrid()}
     <div class="filelabel" style="margin-top:1rem;">Действия</div>
     <button class="btn btn-done" style="width:100%; margin-bottom:0.5rem;" onclick="openAddLessonSheet()">+ Добавить занятие</button>
-    ${renderBreakForm()}
+    <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-bottom:0.5rem;" onclick="openBreakSheet()">🏖 Добавить каникулы</button>
+    <button class="btn" style="width:100%; background:#2D2D2D; color:#fff;" onclick="openDayOffSheet()">🚫 Отметить недоступность</button>
     ${renderAddLessonSheet()}
+    ${renderBreakSheet()}
+    ${renderDayOffSheet()}
     ${renderDaySheet()}
   `;
 }

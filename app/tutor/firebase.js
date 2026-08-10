@@ -528,6 +528,24 @@
     try { await deleteDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleBreaks', breakId)); }
     catch (e) { console.error('delete break failed', e); }
   };
+  function subscribeDaysOff(uid){
+    onSnapshot(collection(db, 'users', uid, 'daysOff'), (snap) => {
+      window.__daysOff = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+    }, (err) => console.error('daysOff sync error', err));
+  }
+  window.__fbSaveDayOff = async function(dayOff){
+    if (!currentUid) return;
+    const id = dayOff.id || uid();
+    try { await setDoc(doc(db, 'users', currentUid, 'daysOff', id), { ...dayOff, id }); }
+    catch (e) { console.error('save day off failed', e); }
+  };
+  window.__fbDeleteDayOff = async function(id){
+    if (!currentUid) return;
+    try { await deleteDoc(doc(db, 'users', currentUid, 'daysOff', id)); }
+    catch (e) { console.error('delete day off failed', e); }
+  };
+
   window.__fbSaveException = async function(studentId, dateStr, exception){
     if (!currentUid) return;
     try { await setDoc(doc(db, 'users', currentUid, 'students', studentId, 'scheduleExceptions', dateStr), { ...exception, date: dateStr }); }
@@ -578,6 +596,7 @@
       document.getElementById('appRoot').style.display = 'block';
       subscribeStudentThemes(uid, latestStudents);
       subscribeStudentSchedules(uid, latestStudents);
+      subscribeDaysOff(uid);
       watchPendingInviteCodes(uid, latestStudents);
       render();
     };

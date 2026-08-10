@@ -13,9 +13,40 @@ let matTypeFilter = 'all';
 function setMatTypeFilter(t){ matTypeFilter = t; render(); }
 let matFiltersExpanded = false;
 function toggleMatFiltersExpanded(){ matFiltersExpanded = !matFiltersExpanded; render(); }
+let matStudentFilter = null; // studentId — активно, когда открыли "Материалы для X"
+function clearMatStudentFilter(){ matStudentFilter = null; render(); }
 let friendMaterials = []; // populated by module script listener
 
-const TYPE_OPTIONS = ['ОГЭ','ЕГЭ','Методичка','Задание','ДЗ'];
+function normalizeCategory(m){
+  if(m.category === 'discuss') return 'Разбираем';
+  if(m.category === 'practice') return 'Тренируемся';
+  return m.category || (data.materialCategories && data.materialCategories[0]) || 'Разбираем';
+}
+function ensureMaterialTaxonomy(){
+  if(!Array.isArray(data.materialCategories) || data.materialCategories.length===0){
+    data.materialCategories = ['Разбираем','Тренируемся','Проверяем','Справочники'];
+  }
+  if(!Array.isArray(data.materialTypes) || data.materialTypes.length===0){
+    data.materialTypes = ['ОГЭ','ЕГЭ'];
+  }
+}
+function addMaterialCategory(){
+  ensureMaterialTaxonomy();
+  const name = prompt('Название новой категории:');
+  if(!name || !name.trim()) return;
+  const clean = name.trim();
+  if(!data.materialCategories.includes(clean)){ data.materialCategories.push(clean); save(); }
+  matCategory = clean;
+  refreshSheet();
+}
+function addMaterialType(){
+  ensureMaterialTaxonomy();
+  const name = prompt('Название нового тега:');
+  if(!name || !name.trim()) return;
+  const clean = name.trim();
+  if(!data.materialTypes.includes(clean)){ data.materialTypes.push(clean); save(); }
+  refreshSheet();
+}
 
 // ---- state: add/edit sheet ----
 let addFormOpen = false;
@@ -24,7 +55,7 @@ let matMode = 'link';
 let matNameValue = '';
 let matUrlValue = '';
 let matNotesValue = '';
-let matCategory = 'discuss';
+let matCategory = 'Разбираем';
 let matSubject = null;
 let matGrades = [];
 let matTypes = [];
@@ -39,7 +70,7 @@ function openAddForm(){
   matNameValue = '';
   matUrlValue = '';
   matNotesValue = '';
-  matCategory = 'discuss';
+  matCategory = (data.materialCategories && data.materialCategories[0]) || 'Разбираем';
   matSubject = profileSubjects.length===1 ? profileSubjects[0] : null;
   matGrades = [];
   matTypes = [];
@@ -57,7 +88,7 @@ function openEditForm(id){
   matNameValue = m.name || '';
   matUrlValue = m.url || '';
   matNotesValue = m.notes || '';
-  matCategory = m.category || 'discuss';
+  matCategory = normalizeCategory(m);
   matSubject = m.subject || (profileSubjects.length===1 ? profileSubjects[0] : null);
   matGrades = normalizeGrades(m);
   matTypes = m.types || [];
@@ -406,13 +437,14 @@ function renderMaterialFormSheetInner(){
         </div>
       ` : ''}
       <div class="filelabel" style="margin-top:0.375rem;">Категория</div>
-      <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-        <button onclick="setMatCategory('discuss')" class="mat-pill ${matCategory==='discuss'?'picked':''}" style="flex:1; justify-content:center;">📖 Разбираем</button>
-        <button onclick="setMatCategory('practice')" class="mat-pill ${matCategory==='practice'?'picked':''}" style="flex:1; justify-content:center;">🏋️ Тренируемся</button>
+      <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem; flex-wrap:wrap;">
+        ${(data.materialCategories||[]).map(c=>`<span class="mat-pill ${matCategory===c?'picked':''}" onclick="setMatCategory('${esc(c)}')">${esc(c)}</span>`).join('')}
+        <span class="mat-pill" onclick="addMaterialCategory()" style="border-style:dashed;">+ своя</span>
       </div>
       <div class="filelabel" style="margin-top:0.375rem;">Тип (необязательно, можно несколько)</div>
       <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem; flex-wrap:wrap;">
-        ${TYPE_OPTIONS.map(t=>`<span class="mat-pill ${matTypes.includes(t)?'picked':''}" onclick="toggleMatType('${esc(t)}')">${esc(t)}</span>`).join('')}
+        ${(data.materialTypes||[]).map(t=>`<span class="mat-pill ${matTypes.includes(t)?'picked':''}" onclick="toggleMatType('${esc(t)}')">${esc(t)}</span>`).join('')}
+        <span class="mat-pill" onclick="addMaterialType()" style="border-style:dashed;">+ свой</span>
       </div>
       <div class="filelabel" style="margin-top:0.375rem;">Кому видно</div>
       ${pickerHTML(materialPicker, 'window.')}
@@ -449,17 +481,23 @@ function renderMaterialsView(){
 
   const applyFilters = (items) => items
     .filter(m => !m.archived)
+    .filter(m => !matStudentFilter || m.visibleToAll || (m.studentIds||[]).includes(matStudentFilter))
     .filter(m => matSubjectFilter==='all' || m.subject === matSubjectFilter)
     .filter(m => matGradeFilter==='all' || normalizeGrades(m).includes(matGradeFilter))
     .filter(m => matTypeFilter==='all' || (m.types||[]).includes(matTypeFilter))
-    .filter(m => matTab!=='search' || !matSearchQuery.trim() || (m.name||'').toLowerCase().includes(matSearchQuery.trim().toLowerCase()));
+    .filter(m => !matSearchQuery.trim() || (m.name||'').toLowerCase().includes(matSearchQuery.trim().toLowerCase()));
 
   const mineList = applyFilters(data.materials || []);
   const friendsListFiltered = applyFilters(friendMaterials || []);
-  const archivedList = (data.materials||[]).filter(m=>m.archived);
+  const archivedList = (data.materials||[]).filter(m=>m.archived)
+    .filter(m => !matSearchQuery.trim() || (m.name||'').toLowerCase().includes(matSearchQuery.trim().toLowerCase()));
 
-  const discussList = mineList.filter(m => (m.category||'discuss') === 'discuss');
-  const practiceList = mineList.filter(m => m.category === 'practice');
+  ensureMaterialTaxonomy();
+  const categoryGroups = data.materialCategories.map(cat => ({
+    cat, items: mineList.filter(m => normalizeCategory(m) === cat)
+  }));
+  const knownCats = new Set(data.materialCategories);
+  const uncategorized = mineList.filter(m => !knownCats.has(normalizeCategory(m)));
 
   const groupHtml = (title, icon, items) => `
     <div class="filelabel" style="margin-top:0.75rem;">${icon} ${title}</div>
@@ -478,7 +516,7 @@ function renderMaterialsView(){
   const typeFilterHtml = `
     <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem; flex-wrap:wrap;">
       <span class="mat-pill ${matTypeFilter==='all'?'picked':''}" onclick="setMatTypeFilter('all')">Все типы</span>
-      ${TYPE_OPTIONS.map(t=>`<span class="mat-pill ${matTypeFilter===t?'picked':''}" onclick="setMatTypeFilter('${esc(t)}')">${esc(t)}</span>`).join('')}
+      ${(data.materialTypes||[]).map(t=>`<span class="mat-pill ${matTypeFilter===t?'picked':''}" onclick="setMatTypeFilter('${esc(t)}')">${esc(t)}</span>`).join('')}
     </div>`;
   const extraFiltersHtml = `
     <div style="margin-bottom:0.75rem;">
@@ -486,37 +524,23 @@ function renderMaterialsView(){
       ${matFiltersExpanded ? `<div style="margin-top:0.5rem;">${gradeFilterHtml}${typeFilterHtml}</div>` : ''}
     </div>`;
 
+  const searchHtml = `<input type="text" placeholder="🔍 искать по названию…" value="${esc(matSearchQuery)}" oninput="setMatSearchQuery(this.value)" style="width:100%; font-size:0.875rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">`;
+
   const tabs = [
     {id:'mine', label:'Личное'},
     {id:'friends', label:'Друзья'},
     {id:'shared', label:'Открытая библиотека'},
-    {id:'search', label:'🔍 Поиск'},
-    {id:'archive', label:`🗄 Архив${archivedList.length?` (${archivedList.length})`:''}`},
   ];
   const tabsHtml = `<div style="display:flex; gap:0.375rem; margin-bottom:0.75rem; align-items:center;">
     <div style="display:flex; gap:0.375rem; overflow-x:auto; flex:1;">
       ${tabs.map(t=>`<button onclick="setMatTab('${t.id}')" class="mat-pill ${matTab===t.id?'picked':''}" style="white-space:nowrap; flex-shrink:0;">${t.label}</button>`).join('')}
     </div>
-    ${(matTab==='mine' || matTab==='search') ? viewModeToggleHTML() : ''}
+    ${matTab==='mine' ? viewModeToggleHTML() : ''}
   </div>`;
 
   let bodyHtml;
   if(matTab === 'shared'){
     bodyHtml = `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin:0.75rem 0;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>`;
-  } else if(matTab === 'archive'){
-    bodyHtml = `
-      ${archivedList.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пусто</div>' : archivedList.map(m => `
-      <div class="matcard">
-        <div style="display:flex; align-items:center; gap:0.5rem;">
-          <span>${materialIcon(m.url)}</span>
-          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
-        </div>
-        <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
-          <button class="btn btn-done" style="flex:1;" onclick="restoreMaterial('${m.id}')">↩️ Восстановить</button>
-          <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="reallyDeleteMaterial('${m.id}')">Удалить навсегда</button>
-        </div>
-      </div>`).join('')}
-    `;
   } else if(matTab === 'friends'){
     bodyHtml = `
       <button class="btn btn-done" style="width:100%; margin-bottom:0.75rem;" onclick="openAddForm()">+ Добавить материал</button>
@@ -531,24 +555,21 @@ function renderMaterialsView(){
         <button class="btn btn-done" style="width:100%; margin-top:0.5rem;" onclick="addFriendMaterialToMine('${m.__friendUid}','${m.id}')">+ Добавить себе</button>
       </div>`).join('')}
     `;
-  } else if(matTab === 'search'){
-    bodyHtml = `
-      <input type="text" placeholder="искать по названию…" value="${esc(matSearchQuery)}" oninput="setMatSearchQuery(this.value)" style="width:100%; font-size:0.875rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
-      ${subjectFilterHtml}${extraFiltersHtml}
-      ${groupHtml('Личные — Разбираем', '📖', discussList)}
-      ${groupHtml('Личные — Тренируемся', '🏋️', practiceList)}
-      ${friendsListFiltered.length ? groupHtml('От друзей', '🤝', friendsListFiltered) : ''}
-    `;
   } else { // mine
     bodyHtml = `
       <button class="btn btn-done" style="width:100%; margin-bottom:0.75rem;" onclick="openAddForm()">+ Добавить материал</button>
       ${subjectFilterHtml}${extraFiltersHtml}
-      ${groupHtml('Разбираем', '📖', discussList)}
-      ${groupHtml('Тренируемся', '🏋️', practiceList)}
+      ${categoryGroups.map(g => groupHtml(g.cat, '📁', g.items)).join('')}
+      ${uncategorized.length ? groupHtml('Без категории', '📄', uncategorized) : ''}
     `;
   }
 
   return `
+    ${matStudentFilter ? `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; background:#EAF0F6; color:#2C4A7C; border-radius:0.5rem; font-size:0.8125rem; margin-bottom:0.5rem;">
+      Только для ${esc((data.students.find(s=>s.id===matStudentFilter)||{}).name || 'ученика')}
+      <button onclick="clearMatStudentFilter()" style="margin-left:auto; background:none; border:none; color:#2C4A7C; cursor:pointer; text-decoration:underline; font-size:0.78125rem;">показать все</button>
+    </div>` : ''}
+    ${searchHtml}
     ${tabsHtml}
     ${bodyHtml}
     ${renderMaterialFormSheet()}
@@ -558,13 +579,14 @@ function renderMaterialsView(){
 function showMaterialsView(studentId){
   viewMode = 'materials';
   matTab = 'mine';
+  matStudentFilter = studentId || null;
   if(studentId){
     editingMaterialId = null;
     matMode = 'link';
     matNameValue = '';
     matUrlValue = '';
     matNotesValue = '';
-    matCategory = 'discuss';
+    matCategory = (data.materialCategories && data.materialCategories[0]) || 'Разбираем';
     matSubject = profileSubjects.length===1 ? profileSubjects[0] : null;
     matGrades = [];
     matTypes = [];

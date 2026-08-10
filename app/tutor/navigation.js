@@ -7,29 +7,14 @@ function closeDrawer(){ document.getElementById('drawer').classList.remove('open
 function selectStudentFromDrawer(id){ focusedStudentId = id; viewMode = 'students'; closeDrawer(); render(); }
 function showOverviewView(){ viewMode = 'overview'; closeDrawer(); render(); }
 function showStudentsView(){ viewMode = 'students'; focusedStudentId = null; closeDrawer(); render(); }
-let drawerOpenSection = null; // 'online' | 'inperson' | null
-function toggleDrawerSection(section){
-  drawerOpenSection = (drawerOpenSection === section) ? null : section;
-  renderDrawerLists();
-}
 
 function renderDrawerLists(){
-  const online = data.students.filter(s => s.format !== 'Очно');
-  const inperson = data.students.filter(s => s.format === 'Очно');
-  const row = s => {
-    const accent = ACCENTS[s.accent] || ACCENTS[0];
-    return `<button class="drawer-item ${focusedStudentId===s.id?'active':''}" style="padding-left:1.5rem;" onclick="selectStudentFromDrawer('${s.id}')"><span class="dot" style="background:${accent.ink}"></span>${esc(s.name)}</button>`;
-  };
-  const onlineEl = document.getElementById('drawerOnline');
-  const inpersonEl = document.getElementById('drawerInperson');
-  onlineEl.style.display = drawerOpenSection === 'online' ? 'block' : 'none';
-  inpersonEl.style.display = drawerOpenSection === 'inperson' ? 'block' : 'none';
-  onlineEl.innerHTML = online.length ? online.map(row).join('') : '<div style="font-size:0.78125rem;color:#9BA3AE;padding:0.375rem 0.625rem 0.375rem 1.5rem;">Пока никого</div>';
-  inpersonEl.innerHTML = inperson.length ? inperson.map(row).join('') : '<div style="font-size:0.78125rem;color:#9BA3AE;padding:0.375rem 0.625rem 0.375rem 1.5rem;">Пока никого</div>';
-  const onlineArrow = document.getElementById('onlineArrow');
-  const inpersonArrow = document.getElementById('inpersonArrow');
-  if(onlineArrow) onlineArrow.textContent = drawerOpenSection === 'online' ? '▴' : '▾';
-  if(inpersonArrow) inpersonArrow.textContent = drawerOpenSection === 'inperson' ? '▴' : '▾';
+  const archiveEl = document.getElementById('archiveMenuItem');
+  if(archiveEl){
+    const hasArchivedStudents = (data.students||[]).some(s=>s.archived);
+    const hasArchivedMaterials = (data.materials||[]).some(m=>m.archived);
+    archiveEl.style.display = (hasArchivedStudents || hasArchivedMaterials) ? 'flex' : 'none';
+  }
 }
 
 const PAGE_HEADERS = {
@@ -41,6 +26,7 @@ const PAGE_HEADERS = {
   calendar: { title: '📅 Календарь', sub: 'Каникулы и нерешённые вопросы по расписанию.' },
   issues: { title: '⚠️ Нерешённые вопросы', sub: 'Всё, что сейчас требует твоего решения — в одном месте.' },
   notifications: { title: '🔔 Уведомления', sub: 'Всё, что тебе присылали за последнее время.' },
+  archive: { title: '🗄 Архив', sub: 'Ученики и материалы, которые сейчас не активны.' },
 };
 function updatePageHeader(){
   const h = PAGE_HEADERS[viewMode] || PAGE_HEADERS.students;
@@ -78,6 +64,10 @@ function render(){
     wrap.innerHTML = renderNotificationsView();
     return;
   }
+  if(viewMode === 'archive'){
+    wrap.innerHTML = renderArchiveView();
+    return;
+  }
   if(viewMode === 'materials'){
     wrap.innerHTML = renderMaterialsView();
     return;
@@ -100,31 +90,23 @@ function render(){
   let subjectFilterHtml = '';
   let extraFiltersHtml = '';
   let addButtonHtml = '';
-  let archivedListHtml = '';
+  let searchHtml = '';
   if(focusedStudentId){
     list = data.students.filter(s => s.id === focusedStudentId);
     backLink = `<button class="hamburger" onclick="showStudentsView()" title="Все ученики" style="margin-bottom:0.75rem;">←</button>`;
   } else {
     list = list.filter(s => !s.archived);
-    const archivedCount = data.students.filter(s=>s.archived).length;
 
+    const smartSort = data.studentSortMode === 'smart';
     addButtonHtml = `<div style="display:flex; justify-content:flex-end; gap:0.375rem; margin-bottom:0.75rem; flex-wrap:wrap;">
-      <button class="mat-pill ${reorderMode?'picked':''}" onclick="toggleReorderMode()">↕️ Переставить</button>
-      ${archivedCount ? `<button class="mat-pill ${showArchivedStudents?'picked':''}" onclick="toggleShowArchivedStudents()">🗄 Архив (${archivedCount})</button>` : ''}
+      ${smartSort ? '' : `<button class="mat-pill ${reorderMode?'picked':''}" onclick="toggleReorderMode()">↕️ Переставить</button>`}
       <button class="btn btn-done" onclick="openAddStudentSheet()">+ Добавить ученика</button>
     </div>`;
 
-    if(showArchivedStudents){
-      const archivedList = data.students.filter(s=>s.archived);
-      archivedListHtml = `
-        <div class="filelabel">В архиве</div>
-        ${archivedList.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.5rem 0;">Архив пуст</div>' : archivedList.map(s=>`
-          <div class="filerow">
-            <span>🗄</span>
-            <span style="flex:1; font-size:0.8125rem;">${esc(s.name)}</span>
-            <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; cursor:pointer; text-decoration:underline;" onclick="restoreStudentFromArchive('${s.id}')">вернуть</button>
-          </div>`).join('')}
-      `;
+    searchHtml = `<input type="text" placeholder="🔍 найти по имени…" value="${esc(studentSearchQuery)}" oninput="setStudentSearchQuery(this.value)" style="width:100%; font-size:0.875rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.625rem;">`;
+    if(studentSearchQuery.trim()){
+      const q = studentSearchQuery.trim().toLowerCase();
+      list = list.filter(s => (s.name||'').toLowerCase().includes(q));
     }
 
     if(profileSubjects.length > 1){
@@ -162,10 +144,22 @@ function render(){
           </div>
         ` : ''}
       </div>`;
+
+    if(smartSort && window.getNextLesson){
+      const todayStr = fmtDate(new Date());
+      const sortKey = s => {
+        const next = getNextLesson(s.scheduleRules||[], s.scheduleExceptions||[], s.scheduleBreaks||[], todayStr, 60);
+        return next ? new Date(next.date+'T'+(next.time||'00:00')).getTime() : Infinity;
+      };
+      list = list.slice().sort((a,b) => sortKey(a)-sortKey(b));
+    }
   }
   const focusedDetailHtml = (focusedStudentId && window.renderStudentFocusedDetail) ? renderStudentFocusedDetail(data.students.find(s=>s.id===focusedStudentId)) : '';
-  wrap.innerHTML = backLink + addButtonHtml + archivedListHtml + subjectFilterHtml + extraFiltersHtml
-    + (list.length ? list.map((s,i)=>cardHTML(s, i===0, i===list.length-1)).join('') : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`)
+  const rowsHtml = focusedStudentId
+    ? list.map((s,i)=>cardHTML(s, i===0, i===list.length-1)).join('')
+    : list.map((s,i)=>compactStudentRow(s, i===0, i===list.length-1)).join('');
+  wrap.innerHTML = backLink + addButtonHtml + searchHtml + subjectFilterHtml + extraFiltersHtml
+    + (list.length ? rowsHtml : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`)
     + focusedDetailHtml
     + renderStudentSheet();
 }

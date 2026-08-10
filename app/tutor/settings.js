@@ -187,6 +187,11 @@ function toggleDataPanel(){
   dataPanelOpen = !dataPanelOpen;
   renderSettingsView();
 }
+function setStudentSortMode(mode){
+  data.studentSortMode = mode;
+  save();
+  renderSettingsView();
+}
 function showSettingsView(){
   viewMode = 'settings';
   closeDrawer();
@@ -226,6 +231,15 @@ function renderSettingsView(){
       </div>
     </div>
 
+    <div class="matcard" style="margin-top:0.75rem;">
+      <div class="filelabel">Порядок учеников в списке</div>
+      <div style="display:flex; gap:0.375rem;">
+        <button onclick="setStudentSortMode('manual')" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${(data.studentSortMode||'manual')!=='smart'?'#1F2A3D':'#C9D2DB'}; background:${(data.studentSortMode||'manual')!=='smart'?'#EAF0F6':'#fff'}; color:${(data.studentSortMode||'manual')!=='smart'?'#2C4A7C':'#8A93A0'}; cursor:pointer;">✋ Ручной</button>
+        <button onclick="setStudentSortMode('smart')" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${data.studentSortMode==='smart'?'#1F2A3D':'#C9D2DB'}; background:${data.studentSortMode==='smart'?'#EAF0F6':'#fff'}; color:${data.studentSortMode==='smart'?'#2C4A7C':'#8A93A0'}; cursor:pointer;">🧠 Умный</button>
+      </div>
+      <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.375rem;">Умный — сортирует по времени до следующего занятия автоматически, без ручной перестановки.</div>
+    </div>
+
     <div class="matcard" style="margin-top:0.75rem;" id="pushSettingsCard">
       ${renderPushSettingsInner()}
     </div>
@@ -237,7 +251,6 @@ function renderSettingsView(){
       </div>
       <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">Резервная копия и восстановление — на случай смены логина или переноса на новое устройство.</div>
       <div id="dataPanel" style="display:${dataPanelOpen?'block':'none'}; margin-top:0.625rem;">
-        <button class="drawer-item" style="padding-left:0;" onclick="syncBaseLinks()">🔄 Обновить базовые ссылки из файла</button>
         <button class="drawer-item" style="padding-left:0;" onclick="downloadBackup()">💾 Скачать резервную копию</button>
         <button class="drawer-item" style="padding-left:0;" onclick="document.getElementById('restoreFile').click()">📂 Загрузить из копии</button>
       </div>
