@@ -14,7 +14,7 @@ function renderIssuesView(){
 
   const scheduleBlock = `
     <div class="filelabel" style="margin-top:0.75rem;">Расписание</div>
-    ${scheduleIssues.length === 0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.5rem 0;">Тут пусто</div>' : scheduleIssues.map(q => `
+    ${scheduleIssues.length === 0 ? '<div style="font-size:0.8125rem;color:var(--text-muted);padding:0.5rem 0;">Тут пусто</div>' : scheduleIssues.map(q => `
       <div class="matcard">
         <div style="font-size:0.8125rem;"><b>${esc(q.studentName)}</b> · ${esc(fmtDateRu(q.date))} ${esc(q.time)}${q.breakLabel?` · ${esc(q.breakLabel)}`:''}</div>
         <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
@@ -27,12 +27,12 @@ function renderIssuesView(){
 
   const accessBlock = `
     <div class="filelabel" style="margin-top:1rem;">Ученики без входа</div>
-    ${noAccountStudents.length === 0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.5rem 0;">Тут пусто</div>' : noAccountStudents.map(s => `
+    ${noAccountStudents.length === 0 ? '<div style="font-size:0.8125rem;color:var(--text-muted);padding:0.5rem 0;">Тут пусто</div>' : noAccountStudents.map(s => `
       <div class="matcard">
         <div style="display:flex; align-items:center; gap:0.5rem;">
           <span>🔑</span>
           <span style="flex:1; font-size:0.8125rem;">${esc(s.name)}${s.inviteCode ? ' — код уже создан, ждём, когда введёт' : ' — код ещё не создан'}</span>
-          <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; cursor:pointer; text-decoration:underline; flex-shrink:0;" onclick="openEditStudentSheet('${s.id}')">открыть</button>
+          <button style="font-size:0.75rem; color:var(--text-secondary); background:none; border:none; cursor:pointer; text-decoration:underline; flex-shrink:0;" onclick="openEditStudentSheet('${s.id}')">открыть</button>
         </div>
       </div>
     `).join('')}
@@ -42,7 +42,7 @@ function renderIssuesView(){
 
   return `
     ${totalCount === 0 ? `
-      <div class="matcard" style="text-align:center; padding:1.5rem 1rem; color:#5A6472;">
+      <div class="matcard" style="text-align:center; padding:1.5rem 1rem; color:var(--text-secondary);">
         <div style="font-size:1.5rem; margin-bottom:0.375rem;">🎉</div>
         <div style="font-size:0.875rem;">Всё решено, вопросов нет</div>
       </div>
@@ -60,7 +60,7 @@ function renderArchiveView(){
   const archivedStudents = (data.students||[]).filter(s=>s.archived);
   const archivedMaterials = (data.materials||[]).filter(m=>m.archived);
   if(archivedStudents.length===0 && archivedMaterials.length===0){
-    return '<div class="matcard" style="text-align:center; color:#9BA3AE; padding:1.5rem 1rem;">Архив пуст</div>';
+    return '<div class="matcard" style="text-align:center; color:var(--text-muted); padding:1.5rem 1rem;">Архив пуст</div>';
   }
   return `
     ${archivedStudents.length ? `
@@ -80,11 +80,11 @@ function renderArchiveView(){
         <div class="matcard" style="margin-bottom:0.5rem;">
           <div style="display:flex; align-items:center; gap:0.5rem;">
             <span>${materialIcon(m.url)}</span>
-            <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
+            <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:var(--accent-blue); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
           </div>
           <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
             <button class="btn btn-done" style="flex:1;" onclick="restoreMaterial('${m.id}')">↩️ Восстановить</button>
-            <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="reallyDeleteMaterial('${m.id}')">Удалить навсегда</button>
+            <button class="btn" style="flex:1; background:var(--danger); color:#fff;" onclick="reallyDeleteMaterial('${m.id}')">Удалить навсегда</button>
           </div>
         </div>`).join('')}
     ` : ''}

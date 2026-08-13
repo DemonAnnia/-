@@ -48,7 +48,7 @@ let currentTheme = 'classic';
 function themePickerHTML(){
   return `<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
     ${Object.entries(THEMES).map(([id, t]) => `
-      <button onclick="pickTheme('${id}')" title="${t.name}" style="width:2.25rem; height:2.25rem; border-radius:999px; border:2px solid ${currentTheme===id?'#1F2A3D':'transparent'}; background:${t.accent}; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+      <button onclick="pickTheme('${id}')" title="${t.name}" style="width:2.25rem; height:2.25rem; border-radius:999px; border:2px solid ${currentTheme===id?'var(--ink)':'transparent'}; background:${t.accent}; display:flex; align-items:center; justify-content:center; cursor:pointer;">
         ${currentTheme===id ? '<span style="color:#fff; font-size:0.875rem;">✓</span>' : ''}
       </button>`).join('')}
   </div>`;
@@ -94,3 +94,14 @@ function toggleOtherContacts(){
   if(el) el.style.display = otherContactsOpen ? 'block' : 'none';
 }
 
+function showSwUpdateBanner(worker){
+  if (document.getElementById('swUpdateBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'swUpdateBanner';
+  banner.style.cssText = 'position:fixed; bottom:0; left:0; right:0; background:#1F2A3D; color:#fff; padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem; z-index:999; font-size:0.875rem; box-shadow:0 -2px 12px rgba(0,0,0,0.15);';
+  banner.innerHTML = '<span style="flex:1;">Доступна новая версия приложения</span><button id="swUpdateBtn" style="background:#fff; color:#1F2A3D; border:none; border-radius:0.5rem; padding:0.375rem 0.75rem; font-weight:600; cursor:pointer;">Обновить</button>';
+  document.body.appendChild(banner);
+  document.getElementById('swUpdateBtn').onclick = () => {
+    worker.postMessage({ type: 'SKIP_WAITING' });
+  };
+}

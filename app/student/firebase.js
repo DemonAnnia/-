@@ -209,6 +209,16 @@
       navigator.serviceWorker.register("../../sw.js").then((reg) => {
         reg.update();
         setInterval(() => reg.update(), 60000);
+        if (reg.waiting) showSwUpdateBanner(reg.waiting);
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showSwUpdateBanner(newWorker);
+            }
+          });
+        });
       }).catch(() => {});
     });
   }

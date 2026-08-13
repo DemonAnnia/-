@@ -13,7 +13,7 @@ function renderStudentView(student, materials, profile){
   renderTutorSwitcher();
   const count = student.completedLessonsCount || 0;
   document.getElementById('lessonCounterPill').innerHTML = count > 0
-    ? `<span style="font-size:0.75rem; font-weight:600; background:#E2EFE6; color:#1F5C3A; padding:0.2rem 0.5rem; border-radius:999px;">🎉 Уже ${count} занят${count===1?'ие':(count<5?'ия':'ий')} вместе</span>`
+    ? `<span style="font-size:0.75rem; font-weight:600; background:var(--success-soft); color:var(--success-text); padding:0.2rem 0.5rem; border-radius:999px;">🎉 Уже ${count} занят${count===1?'ие':(count<5?'ия':'ий')} вместе</span>`
     : '';
 
   const mainArea = document.getElementById('mainArea');

@@ -16,8 +16,8 @@
 <body>
 <div id="loadingScreen" style="min-height:100vh; display:flex; align-items:center; justify-content:center; color:#8A93A0; font-family:'IBM Plex Sans',sans-serif; font-size:0.875rem;">Загружаю…</div>
 
-<div id="backdrop" class="backdrop" onclick="closeDrawer()"></div>
-<div id="drawer" class="drawer">
+<div id="backdrop" class="backdrop" onclick="closeDrawer()" aria-hidden="true"></div>
+<div id="drawer" class="drawer" role="navigation" aria-label="Главное меню">
   <div class="drawer-title">📘 Меню</div>
 
   <button class="drawer-item" onclick="showOverviewView()">🏠 Обзор</button>
@@ -45,17 +45,17 @@
 <div id="appRoot" style="display:none;">
 <div class="wrap">
   <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.25rem;">
-    <button class="hamburger" onclick="openDrawer()">☰</button>
+    <button class="hamburger" onclick="openDrawer()" aria-label="Открыть меню">☰</button>
     <h1 id="pageTitle" style="margin:0;">📘 Перед уроком</h1>
   </div>
   <div id="pageSub" class="sub" style="margin-top:0.375rem;">Ссылки, доски и материалы — по каждому ученику. Синхронизируется на всех устройствах.</div>
-  <div id="mainArea"></div>
+  <div id="mainArea" role="main"></div>
   <div id="onboardingSheetContainer"></div>
 </div>
 </div>
 
 <script src="tutor/shared.js"></script>
-<script src="tutor/calendar.js"></script>
+<script src="calendar.js"></script>
 <script src="tutor/scheduleUI.js"></script>
 <script src="tutor/issues.js"></script>
 <script src="tutor/notifications.js"></script>

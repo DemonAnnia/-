@@ -17,8 +17,8 @@
 <div id="loadingScreen" style="min-height:100vh; display:flex; align-items:center; justify-content:center; color:#8A93A0; font-family:'IBM Plex Sans',sans-serif; font-size:0.875rem;">Загружаю…</div>
 <div id="notFoundOverlay" style="display:none; min-height:100vh; align-items:center; justify-content:center; padding:1.5rem; text-align:center; color:#5A6472; position:fixed; inset:0; background:#F3F5F1;">Не получилось найти твои данные. Попроси преподавателя проверить код приглашения.<br><br><a href="#" onclick="doLogout();return false;" style="color:#C0392B;">Выйти</a></div>
 
-<div id="backdrop" class="backdrop" onclick="closeDrawer()"></div>
-<div id="drawer" class="drawer">
+<div id="backdrop" class="backdrop" onclick="closeDrawer()" aria-hidden="true"></div>
+<div id="drawer" class="drawer" role="navigation" aria-label="Главное меню">
   <div class="drawer-title">📘 Меню</div>
   <button class="drawer-item" onclick="showSection('lesson')">📖 Урок</button>
   <button class="drawer-item" onclick="showSection('trainers')">🧠 Тренажёры</button>
@@ -34,7 +34,7 @@
 <div id="appRoot" style="display:none;">
 <div class="wrap">
   <div style="display:flex; align-items:center; gap:0.625rem; margin-bottom:0.25rem;">
-    <button class="hamburger" onclick="openDrawer()">☰</button>
+    <button class="hamburger" onclick="openDrawer()" aria-label="Открыть меню">☰</button>
     <h1 id="headerGreeting" style="margin:0;">👋 Привет!</h1>
   </div>
   <div class="sub" style="margin-top:0.375rem; display:flex; align-items:center; gap:0.5rem;">
@@ -42,12 +42,12 @@
     <span id="lessonCounterPill"></span>
   </div>
   <div id="tutorSwitcher" style="margin-top:0.625rem;"></div>
-  <div id="mainArea" style="margin-top:1rem;"></div>
+  <div id="mainArea" style="margin-top:1rem;" role="main"></div>
 </div>
 </div>
 
 <script src="student/shared.js"></script>
-<script src="student/calendar.js"></script>
+<script src="calendar.js"></script>
 <script src="student/sections.js"></script>
 <script src="student/switcher.js"></script>
 <script src="student/main.js"></script>

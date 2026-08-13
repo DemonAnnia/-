@@ -93,7 +93,7 @@ function render(){
   let searchHtml = '';
   if(focusedStudentId){
     list = data.students.filter(s => s.id === focusedStudentId);
-    backLink = `<button class="hamburger" onclick="showStudentsView()" title="Все ученики" style="margin-bottom:0.75rem;">←</button>`;
+    backLink = `<button class="hamburger" onclick="showStudentsView()" title="Все ученики" aria-label="Назад к списку учеников" style="margin-bottom:0.75rem;">←</button>`;
   } else {
     list = list.filter(s => !s.archived);
 
@@ -103,7 +103,7 @@ function render(){
       <button class="btn btn-done" onclick="openAddStudentSheet()">+ Добавить ученика</button>
     </div>`;
 
-    searchHtml = `<input type="text" placeholder="🔍 найти по имени…" value="${esc(studentSearchQuery)}" oninput="setStudentSearchQuery(this.value)" style="width:100%; font-size:0.875rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.625rem;">`;
+    searchHtml = `<input type="text" placeholder="🔍 найти по имени…" value="${esc(studentSearchQuery)}" oninput="setStudentSearchQuery(this.value)" style="width:100%; font-size:0.875rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.625rem;">`;
     if(studentSearchQuery.trim()){
       const q = studentSearchQuery.trim().toLowerCase();
       list = list.filter(s => (s.name||'').toLowerCase().includes(q));
@@ -159,7 +159,7 @@ function render(){
     ? list.map((s,i)=>cardHTML(s, i===0, i===list.length-1)).join('')
     : list.map((s,i)=>compactStudentRow(s, i===0, i===list.length-1)).join('');
   wrap.innerHTML = backLink + addButtonHtml + searchHtml + subjectFilterHtml + extraFiltersHtml
-    + (list.length ? rowsHtml : `<div style="font-size:0.8125rem; color:#9BA3AE; padding:0.5rem 0;">Здесь пока никого нет</div>`)
+    + (list.length ? rowsHtml : `<div style="font-size:0.8125rem; color:var(--text-muted); padding:0.5rem 0;">Здесь пока никого нет</div>`)
     + focusedDetailHtml
     + renderStudentSheet();
 }
@@ -179,8 +179,29 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("../../sw.js").then((reg) => {
       reg.update();
       setInterval(() => reg.update(), 60000);
+      if (reg.waiting) showSwUpdateBanner(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            showSwUpdateBanner(newWorker);
+          }
+        });
+      });
     }).catch(() => {});
   });
+}
+function showSwUpdateBanner(worker){
+  if (document.getElementById('swUpdateBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'swUpdateBanner';
+  banner.style.cssText = 'position:fixed; bottom:0; left:0; right:0; background:#1F2A3D; color:#fff; padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem; z-index:999; font-size:0.875rem; box-shadow:0 -2px 12px rgba(0,0,0,0.15);';
+  banner.innerHTML = '<span style="flex:1;">Доступна новая версия приложения</span><button id="swUpdateBtn" style="background:#fff; color:#1F2A3D; border:none; border-radius:0.5rem; padding:0.375rem 0.75rem; font-weight:600; cursor:pointer;">Обновить</button>';
+  document.body.appendChild(banner);
+  document.getElementById('swUpdateBtn').onclick = () => {
+    worker.postMessage({ type: 'SKIP_WAITING' });
+  };
 }
 
 // custom install button — more reliable than waiting for the browser to surface its own prompt

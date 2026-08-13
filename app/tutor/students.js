@@ -176,7 +176,7 @@ function renderStudentPreviewHTML(){
       <div class="dot" style="background:${accent.ink}; flex-shrink:0;"></div>
       <div style="flex:1; min-width:0;">
         <div style="font-weight:700; font-size:0.9375rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(name)}</div>
-        <div style="font-size:0.75rem; color:#5A6472;">${esc(grade)}${grade&&d.format?' · ':''}${esc(d.format||'')}</div>
+        <div style="font-size:0.75rem; color:var(--text-secondary);">${esc(grade)}${grade&&d.format?' · ':''}${esc(d.format||'')}</div>
       </div>
     </div>`;
 }
@@ -207,7 +207,7 @@ function renderStudentSheet(){
       <div id="studentSheetTitle" style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">${isNewStudentDraft?'➕ ':'✏️ '}${esc(name)}</div>
       <button class="hamburger" onclick="requestCloseStudentSheet()">✕</button>
     </div>
-    <div id="studentPreviewSticky" style="position:sticky; top:0; z-index:5; padding:0 1rem 0.75rem; background:#F3F5F1;">${renderStudentPreviewHTML()}</div>
+    <div id="studentPreviewSticky" style="position:sticky; top:0; z-index:5; padding:0 1rem 0.75rem; background:var(--bg);">${renderStudentPreviewHTML()}</div>
     <div id="studentSheetInner" style="padding:0 1rem 1.5rem;">${renderStudentSheetInner(d)}</div>
   </div>`;
 }
@@ -269,7 +269,7 @@ let editingScheduleGroupKey = null;
 let editScheduleDays = [];
 function renderScheduleGroups(s){
   const rules = s.scheduleRules || [];
-  if(rules.length === 0) return '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>';
+  if(rules.length === 0) return '<div style="font-size:0.78125rem;color:var(--text-muted);margin-bottom:0.5rem;">Пока пусто</div>';
   const groups = {};
   rules.forEach(r => {
     const key = scheduleGroupKey(r);
@@ -287,7 +287,7 @@ function renderScheduleGroups(s){
       <div class="filerow" style="cursor:pointer;" onclick="${isEditing?'':`openScheduleGroupEdit('${s.id}','${key}')`}">
         <span>📅</span>
         <span style="flex:1; font-size:0.8125rem;">${esc(daysLabel)} · ${esc(g.time)}${tariff ? ` · ${esc(tariff.label)}` : ''}${rangeLabel}</span>
-        <button class="iconbtn" onclick="event.stopPropagation(); deleteScheduleGroup('${s.id}','${g.ruleIds.join(',')}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+        <button class="iconbtn" onclick="event.stopPropagation(); deleteScheduleGroup('${s.id}','${g.ruleIds.join(',')}')" aria-label="Удалить правило расписания" style="border-color:var(--danger-border);background:var(--danger-soft);color:var(--danger);">✕</button>
       </div>
       ${isEditing ? renderScheduleGroupEditForm(s, g) : ''}`;
   }).join('');
@@ -314,17 +314,17 @@ function toggleEditScheduleDay(dow){
 }
 function renderScheduleGroupEditForm(s, g){
   return `
-    <div style="padding:0.625rem; background:#F6F7F5; border-radius:0.625rem; margin:0.25rem 0 0.5rem;">
-      <div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">Дни недели</div>
+    <div style="padding:0.625rem; background:var(--bg-alt); border-radius:0.625rem; margin:0.25rem 0 0.5rem;">
+      <div style="font-size:0.71875rem; color:var(--text-faint); margin-bottom:0.25rem;">Дни недели</div>
       <div style="display:flex; gap:0.25rem; margin-bottom:0.375rem;">
         ${DAY_ORDER.map(dow=>`<span class="mat-pill ${editScheduleDays.includes(dow)?'picked':''}" style="flex:1; justify-content:center; padding:0.3rem 0.25rem;" onclick="toggleEditScheduleDay(${dow})">${DAY_NAMES[dow]}</span>`).join('')}
       </div>
       <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-        <input type="time" id="editScheduleTime" value="${esc(g.time)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-        <input type="date" id="editScheduleStart" value="${esc(g.startDate)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <input type="time" id="editScheduleTime" value="${esc(g.time)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
+        <input type="date" id="editScheduleStart" value="${esc(g.startDate)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
       </div>
       ${(s.subjects||[]).length ? `
-        <select id="editScheduleTariff" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+        <select id="editScheduleTariff" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.375rem;">
           <option value="">без привязки к тарифу</option>
           ${s.subjects.map(sub=>`<option value="${sub.id}" ${g.subjectId===sub.id?'selected':''}>${esc(sub.label)} · ${tariffLabel(sub)}</option>`).join('')}
         </select>
@@ -514,16 +514,16 @@ function compactStudentRow(s, isFirst, isLast){
     <div class="filerow" style="background:${accent.soft};">
       <div class="dot" style="background:${accent.ink}; flex-shrink:0;"></div>
       <span style="flex:1; font-size:0.875rem; font-weight:600;">${esc(s.name)}</span>
-      <span style="font-size:0.78125rem; color:#8A93A0; margin-right:0.5rem;">${esc(s.grade)}</span>
-      <button class="iconbtn" ${isFirst?'disabled style="opacity:.3;"':''} onclick="moveStudent('${s.id}',-1)">↑</button>
-      <button class="iconbtn" ${isLast?'disabled style="opacity:.3;"':''} onclick="moveStudent('${s.id}',1)">↓</button>
+      <span style="font-size:0.78125rem; color:var(--text-faint); margin-right:0.5rem;">${esc(s.grade)}</span>
+      <button class="iconbtn" ${isFirst?'disabled style="opacity:.3;"':''} onclick="moveStudent('${s.id}',-1)" aria-label="Переместить выше">↑</button>
+      <button class="iconbtn" ${isLast?'disabled style="opacity:.3;"':''} onclick="moveStudent('${s.id}',1)" aria-label="Переместить ниже">↓</button>
     </div>`;
   }
   return `
     <div class="filerow" style="cursor:pointer; background:${accent.soft};" onclick="selectStudentFromDrawer('${s.id}')">
       <div class="dot" style="background:${accent.ink}; flex-shrink:0;"></div>
       <span style="flex:1; font-size:0.875rem; font-weight:600;">${esc(s.name)}</span>
-      <span style="font-size:0.78125rem; color:#8A93A0;">${esc(s.grade)} · ${esc(s.format)}</span>
+      <span style="font-size:0.78125rem; color:var(--text-faint);">${esc(s.grade)} · ${esc(s.format)}</span>
       ${studentHasIssue(s) ? '<span title="Требует внимания" style="margin-left:0.375rem;">⚠️</span>' : ''}
     </div>`;
 }
@@ -548,13 +548,13 @@ function cardHTML(s){
           <div class="name">${esc(s.name)}</div>
           <div class="meta">${esc(s.grade)} · ${esc(s.format)}</div>
         </div>
-        <button class="chev">✏️</button>
+        <button class="chev" aria-label="Редактировать ученика">✏️</button>
       </div>
       <div class="body">
         <div class="tags">${tags}</div>
         <div class="row">
-          <a class="btn ${s.callLink?'':'btn-off'}" href="${s.callLink?esc(s.callLink):'#'}" target="_blank" style="background:${s.callLink?'#1F2A3D':''};color:${s.callLink?'#fff':''}" onclick="${s.callLink?'':'return false;'}">🎥 Звонок</a>
-          <a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?'#C0392B':''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>
+          <a class="btn ${s.callLink?'':'btn-off'}" href="${s.callLink?esc(s.callLink):'#'}" target="_blank" style="background:${s.callLink?'var(--ink)':''};color:${s.callLink?'#fff':''}" onclick="${s.callLink?'':'return false;'}">🎥 Звонок</a>
+          <a class="btn ${s.boardLink?'':'btn-off'}" href="${s.boardLink?esc(s.boardLink):'#'}" target="_blank" style="background:${s.boardLink?'var(--danger)':''};color:${s.boardLink?'#fff':''}" onclick="${s.boardLink?'':'return false;'}">✏️ Доска</a>
         </div>
         ${primary ? `
         <div style="display:flex; gap:0.375rem; margin-top:8px;">
@@ -562,8 +562,8 @@ function cardHTML(s){
           ${others.length ? `<button class="btn" style="flex:0 0 auto; width:2.5rem; background:${accent.soft};color:${accent.ink};border:1px solid ${accent.soft};" onclick="toggleOtherContactsFor('${s.id}')" title="Другие способы связи">⋯</button>` : ''}
         </div>
         ${(others.length && otherContactsOpenFor[s.id]) ? `<div class="chiprow">${others.map(c=>`<a class="chip" href="#" onclick="sendContactChip('${s.id}','${c.id}');return false;">${contactIcon(c)} ${esc(contactLabel(c))}</a>`).join('')}</div>` : ''}
-        ` : `<div style="font-size:0.78125rem;color:#9BA3AE; margin-top:0.5rem;">Контакты не добавлены — открой карточку, чтобы добавить</div>`}
-        ${doneMsgFor[s.id]?`<div class="msgbox"><div style="flex:1;">${esc(doneMsgFor[s.id])}</div>${s.needsPaymentReport?`<button class="iconbtn" onclick="copyText('${esc(doneMsgFor[s.id])}', this)">⧉</button>`:''}</div>`:''}
+        ` : `<div style="font-size:0.78125rem;color:var(--text-muted); margin-top:0.5rem;">Контакты не добавлены — открой карточку, чтобы добавить</div>`}
+        ${doneMsgFor[s.id]?`<div class="msgbox"><div style="flex:1;">${esc(doneMsgFor[s.id])}</div>${s.needsPaymentReport?`<button class="iconbtn" onclick="copyText('${esc(doneMsgFor[s.id])}', this)" aria-label="Скопировать сообщение">⧉</button>`:''}</div>`:''}
       </div>
     </div>`;
 }
@@ -573,17 +573,17 @@ function renderStudentSheetInner(d){
     const savedStudent = !isNewStudentDraft ? data.students.find(x=>x.id===editingStudentId) : null;
     return `
         ${pendingSheetExit ? `
-          <div style="padding:0.75rem; background:#FBEEEC; border-radius:0.625rem; margin:0.75rem 0;">
-            <div style="font-size:0.8125rem; color:#7A2E1E; margin-bottom:0.5rem;">Есть несохранённые изменения. Точно выйти без сохранения?</div>
+          <div style="padding:0.75rem; background:var(--danger-soft); border-radius:0.625rem; margin:0.75rem 0;">
+            <div style="font-size:0.8125rem; color:var(--warning-text); margin-bottom:0.5rem;">Есть несохранённые изменения. Точно выйти без сохранения?</div>
             <div style="display:flex; gap:0.375rem;">
-              <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="closeStudentSheet()">Выйти без сохранения</button>
+              <button class="btn" style="flex:1; background:var(--danger); color:#fff;" onclick="closeStudentSheet()">Выйти без сохранения</button>
               <button class="btn btn-off" style="flex:1;" onclick="cancelSheetExit()">Остаться</button>
             </div>
           </div>
         ` : ''}
         ${pendingSaveWarning ? `
-          <div style="padding:0.75rem; background:#FBEEEC; border-radius:0.625rem; margin:0.75rem 0;">
-            <div style="font-size:0.8125rem; color:#7A2E1E; margin-bottom:0.5rem;">${esc(pendingSaveWarning)}</div>
+          <div style="padding:0.75rem; background:var(--danger-soft); border-radius:0.625rem; margin:0.75rem 0;">
+            <div style="font-size:0.8125rem; color:var(--warning-text); margin-bottom:0.5rem;">${esc(pendingSaveWarning)}</div>
             <div style="display:flex; gap:0.375rem;">
               <button class="btn btn-done" style="flex:1;" onclick="saveStudentDraft(true)">Сохранить всё равно</button>
               <button class="btn btn-off" style="flex:1;" onclick="pendingSaveWarning=null; refreshStudentSheet();">Отмена</button>
@@ -591,23 +591,23 @@ function renderStudentSheetInner(d){
           </div>
         ` : ''}
         <div class="filelabel" style="margin-top:0.75rem;">Имя</div>
-        <input type="text" placeholder="Имя" value="${esc(d.firstName)}" oninput="editingStudentDraft.firstName=this.value; updateStickyPreview();" style="width:100%; font-size:0.9375rem; font-weight:600; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+        <input type="text" placeholder="Имя" value="${esc(d.firstName)}" oninput="editingStudentDraft.firstName=this.value; updateStickyPreview();" style="width:100%; font-size:0.9375rem; font-weight:600; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.375rem;">
         <div class="filelabel">Фамилия (необязательно)</div>
-        <input type="text" placeholder="Фамилия" value="${esc(d.lastName)}" oninput="editingStudentDraft.lastName=this.value; updateStickyPreview();" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
+        <input type="text" placeholder="Фамилия" value="${esc(d.lastName)}" oninput="editingStudentDraft.lastName=this.value; updateStickyPreview();" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.75rem;">
         <div class="filelabel">Класс</div>
-        <input type="number" min="1" max="11" placeholder="например, 9" value="${esc(d.gradeNumber)}" oninput="editingStudentDraft.gradeNumber=this.value; updateStickyPreview();" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
+        <input type="number" min="1" max="11" placeholder="например, 9" value="${esc(d.gradeNumber)}" oninput="editingStudentDraft.gradeNumber=this.value; updateStickyPreview();" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.75rem;">
         <div class="filelabel">Цвет карточки</div>
         <div style="display:flex; gap:0.375rem; flex-wrap:wrap; margin-bottom:0.625rem;">
-          ${ACCENTS.map((a, i) => `<button title="${ACCENT_NAMES[i]}" onclick="editingStudentDraft.accent=${i}; refreshStudentSheet();" style="width:1.75rem; height:1.75rem; border-radius:999px; border:2px solid ${d.accent===i?'#1F2A3D':'transparent'}; background:${a.ink}; cursor:pointer; flex-shrink:0;">${d.accent===i?'<span style="color:#fff;font-size:0.75rem;">✓</span>':''}</button>`).join('')}
+          ${ACCENTS.map((a, i) => `<button title="${ACCENT_NAMES[i]}" onclick="editingStudentDraft.accent=${i}; refreshStudentSheet();" style="width:1.75rem; height:1.75rem; border-radius:999px; border:2px solid ${d.accent===i?'var(--ink)':'transparent'}; background:${a.ink}; cursor:pointer; flex-shrink:0;">${d.accent===i?'<span style="color:#fff;font-size:0.75rem;">✓</span>':''}</button>`).join('')}
         </div>
         <div class="filelabel">Формат</div>
         <div style="display:flex; gap:0.375rem; margin-bottom:0.625rem;">
-          <button onclick="editingStudentDraft.format='Онлайн'; refreshStudentSheet();" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${d.format!=='Очно'?accent.ink:'#C9D2DB'}; background:${d.format!=='Очно'?accent.soft:'#fff'}; color:${d.format!=='Очно'?accent.ink:'#8A93A0'}; cursor:pointer;">💻 Онлайн</button>
-          <button onclick="editingStudentDraft.format='Очно'; refreshStudentSheet();" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${d.format==='Очно'?accent.ink:'#C9D2DB'}; background:${d.format==='Очно'?accent.soft:'#fff'}; color:${d.format==='Очно'?accent.ink:'#8A93A0'}; cursor:pointer;">🤝 Очно</button>
+          <button onclick="editingStudentDraft.format='Онлайн'; refreshStudentSheet();" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${d.format!=='Очно'?accent.ink:'var(--border)'}; background:${d.format!=='Очно'?accent.soft:'#fff'}; color:${d.format!=='Очно'?accent.ink:'var(--text-faint)'}; cursor:pointer;">💻 Онлайн</button>
+          <button onclick="editingStudentDraft.format='Очно'; refreshStudentSheet();" style="flex:1; padding:0.4375rem 0; border-radius:0.5rem; font-size:0.78125rem; font-weight:600; border:1px solid ${d.format==='Очно'?accent.ink:'var(--border)'}; background:${d.format==='Очно'?accent.soft:'#fff'}; color:${d.format==='Очно'?accent.ink:'var(--text-faint)'}; cursor:pointer;">🤝 Очно</button>
         </div>
-        <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.625rem;">Ссылки на звонок/доску видны всегда — если этот ученик обычно очный, но разово занимались онлайн, ссылка всё равно под рукой.</div>
-        <div class="field"><span>🎥</span><input type="text" placeholder="ссылка на звонок (Зум / Телемост)" value="${esc(d.callLink)}" oninput="editingStudentDraft.callLink=this.value;"><button class="iconbtn" onclick="copyText(editingStudentDraft.callLink, this)">⧉</button></div>
-        <div class="field"><span>✏️</span><input type="text" placeholder="ссылка на доску" value="${esc(d.boardLink)}" oninput="editingStudentDraft.boardLink=this.value;"><button class="iconbtn" onclick="copyText(editingStudentDraft.boardLink, this)">⧉</button></div>
+        <div style="font-size:0.71875rem; color:var(--text-muted); margin-bottom:0.625rem;">Ссылки на звонок/доску видны всегда — если этот ученик обычно очный, но разово занимались онлайн, ссылка всё равно под рукой.</div>
+        <div class="field"><span>🎥</span><input type="text" placeholder="ссылка на звонок (Зум / Телемост)" value="${esc(d.callLink)}" oninput="editingStudentDraft.callLink=this.value;"><button class="iconbtn" onclick="copyText(editingStudentDraft.callLink, this)" aria-label="Скопировать ссылку на звонок">⧉</button></div>
+        <div class="field"><span>✏️</span><input type="text" placeholder="ссылка на доску" value="${esc(d.boardLink)}" oninput="editingStudentDraft.boardLink=this.value;"><button class="iconbtn" onclick="copyText(editingStudentDraft.boardLink, this)" aria-label="Скопировать ссылку на доску">⧉</button></div>
 
         <div class="filelabel" style="margin-top:0.75rem;">Контакты ребёнка</div>
         ${studentContactGridHTML('child', d.childContacts, d.childPrimaryId)}
@@ -617,28 +617,28 @@ function renderStudentSheetInner(d){
         <label class="checklabel"><input type="checkbox" ${d.needsPaymentReport?'checked':''} onchange="editingStudentDraft.needsPaymentReport=this.checked;"> Родителю нужно писать про оплату после урока</label>
 
         <div class="filelabel" style="margin-top:0.75rem;">Тарифы</div>
-        ${(d.subjects||[]).length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока пусто</div>' : d.subjects.map(sub=>`
+        ${(d.subjects||[]).length===0 ? '<div style="font-size:0.78125rem;color:var(--text-muted);margin-bottom:0.5rem;">Пока пусто</div>' : d.subjects.map(sub=>`
           <div class="filerow">
             <span>💳</span>
             <span style="flex:1; font-size:0.8125rem;">${sub.subject ? `<b>${esc(sub.subject)}:</b> ` : ''}${esc(sub.label)} · ${tariffLabel(sub)}</span>
-            <button class="iconbtn" onclick="removeDraftSubject('${sub.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+            <button class="iconbtn" onclick="removeDraftSubject('${sub.id}')" aria-label="Удалить тариф" style="border-color:var(--danger-border);background:var(--danger-soft);color:var(--danger);">✕</button>
           </div>`).join('')}
         ${profileSubjects.length > 1 ? `
-          <select id="draftSubjectSelect" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+          <select id="draftSubjectSelect" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.375rem;">
             ${profileSubjects.map(sub=>`<option value="${esc(sub)}">${esc(sub)}</option>`).join('')}
           </select>` : ''}
-        <input type="text" id="draftSubLabel" placeholder="название (напр. ОГЭ)" style="width:100%; font-size:0.78125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
-        <div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">Длительность, часы</div>
+        <input type="text" id="draftSubLabel" placeholder="название (напр. ОГЭ)" style="width:100%; font-size:0.78125rem; padding:0.4375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.375rem;">
+        <div style="font-size:0.71875rem; color:var(--text-faint); margin-bottom:0.25rem;">Длительность, часы</div>
         <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-          <input type="number" step="0.5" min="0.5" id="draftSubDuration" value="1" style="width:4rem; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          <input type="number" step="0.5" min="0.5" id="draftSubDuration" value="1" style="width:4rem; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
           <button class="mat-pill" onclick="setDraftSubjectDuration(1)">1</button>
           <button class="mat-pill" onclick="setDraftSubjectDuration(1.5)">1,5</button>
           <button class="mat-pill" onclick="setDraftSubjectDuration(2)">2</button>
         </div>
         <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-          <input type="number" step="1" min="0" id="draftSubPrice" placeholder="цена" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          <input type="number" step="1" min="0" id="draftSubPrice" placeholder="цена" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
           ${profAcceptsMultiCurrency ? `
-            <select id="draftSubCurrency" style="font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+            <select id="draftSubCurrency" style="font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
               ${Object.keys(CURRENCIES).map(code=>`<option value="${code}">${code} (${CURRENCIES[code]})</option>`).join('')}
             </select>
           ` : ''}
@@ -646,33 +646,33 @@ function renderStudentSheetInner(d){
         <button class="btn btn-done" style="width:100%;" onclick="addDraftSubject()">+ Добавить тариф</button>
 
         ${isNewStudentDraft ? `
-          <div style="font-size:0.78125rem; color:#9BA3AE; margin:0.75rem 0; text-align:center;">Расписание, код входа и материалы откроются после первого сохранения</div>
+          <div style="font-size:0.78125rem; color:var(--text-muted); margin:0.75rem 0; text-align:center;">Расписание, код входа и материалы откроются после первого сохранения</div>
         ` : `
           <div class="filelabel" style="margin-top:0.75rem;">Расписание</div>
           ${renderScheduleGroups(savedStudent)}
-          <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.5rem; margin-bottom:0.75rem;" onclick="showCalendarView()">📅 Открыть общий календарь — там же можно добавить занятие</button>
+          <button class="btn" style="width:100%; background:var(--surface); color:var(--text); margin-top:0.5rem; margin-bottom:0.75rem;" onclick="showCalendarView()">📅 Открыть общий календарь — там же можно добавить занятие</button>
 
           <div class="filelabel">Вход для ученика</div>
           ${confirmResetAccess ? `
-            <div style="padding:0.75rem; background:#FBEEEC; border-radius:0.625rem; margin-bottom:0.5rem;">
-              <div style="font-size:0.78125rem; color:#7A2E1E; margin-bottom:0.5rem;">Старый вход перестанет действовать (если ученик его найдёт — попроси не пользоваться), и создастся новый код. Точно?</div>
+            <div style="padding:0.75rem; background:var(--danger-soft); border-radius:0.625rem; margin-bottom:0.5rem;">
+              <div style="font-size:0.78125rem; color:var(--warning-text); margin-bottom:0.5rem;">Старый вход перестанет действовать (если ученик его найдёт — попроси не пользоваться), и создастся новый код. Точно?</div>
               <div style="display:flex; gap:0.375rem;">
-                <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="confirmResetAndNewCode('${savedStudent.id}')">Сбросить и создать новый</button>
+                <button class="btn" style="flex:1; background:var(--danger); color:#fff;" onclick="confirmResetAndNewCode('${savedStudent.id}')">Сбросить и создать новый</button>
                 <button class="btn btn-off" style="flex:1;" onclick="cancelResetAccess()">Отмена</button>
               </div>
             </div>
           ` : savedStudent.hasAccount ? `
-            <div class="msgbox" style="align-items:center; background:#E2EFE6;">
-              <div style="flex:1; font-size:0.8125rem; color:#1F5C3A;">✅ Уже подключён — для нового предмета этому же ученику новый код не нужен, просто добавь тариф с нужным предметом выше</div>
+            <div class="msgbox" style="align-items:center; background:var(--success-soft);">
+              <div style="flex:1; font-size:0.8125rem; color:var(--success-text);">✅ Уже подключён — для нового предмета этому же ученику новый код не нужен, просто добавь тариф с нужным предметом выше</div>
             </div>
-            <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; padding:0.25rem 0; margin-top:0.25rem; cursor:pointer; text-decoration:underline;" onclick="requestResetAccess()">Ребёнок потерял доступ — сбросить и выдать новый код</button>
+            <button style="font-size:0.75rem; color:var(--text-secondary); background:none; border:none; padding:0.25rem 0; margin-top:0.25rem; cursor:pointer; text-decoration:underline;" onclick="requestResetAccess()">Ребёнок потерял доступ — сбросить и выдать новый код</button>
           ` : savedStudent.inviteCode ? `
             <div class="msgbox" style="align-items:center;">
-              <div style="flex:1;">Код: <b style="font-family:'IBM Plex Mono',monospace; font-size:1rem;">${esc(savedStudent.inviteCode)}</b><br><span style="font-size:0.71875rem; color:#8A93A0;">Пришли этот код ученику — он вводит его один раз при создании своего аккаунта</span></div>
-              <button class="iconbtn" onclick="copyText('${esc(savedStudent.inviteCode)}', this)">⧉</button>
-              <button class="iconbtn" onclick="revokeInviteCode('${savedStudent.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+              <div style="flex:1;">Код: <b style="font-family:'IBM Plex Mono',monospace; font-size:1rem;">${esc(savedStudent.inviteCode)}</b><br><span style="font-size:0.71875rem; color:var(--text-faint);">Пришли этот код ученику — он вводит его один раз при создании своего аккаунта</span></div>
+              <button class="iconbtn" onclick="copyText('${esc(savedStudent.inviteCode)}', this)" aria-label="Скопировать код">⧉</button>
+              <button class="iconbtn" onclick="revokeInviteCode('${savedStudent.id}')" aria-label="Отозвать код входа" style="border-color:var(--danger-border);background:var(--danger-soft);color:var(--danger);">✕</button>
             </div>` : `
-            <button class="btn" style="width:100%; background:#EAF0F6; color:#2C4A7C; margin-bottom:0.625rem;" onclick="generateInviteCode('${savedStudent.id}')">🔑 Создать код для входа</button>`}
+            <button class="btn" style="width:100%; background:var(--accent-blue-soft); color:var(--accent-blue); margin-bottom:0.625rem;" onclick="generateInviteCode('${savedStudent.id}')">🔑 Создать код для входа</button>`}
         `}
 
         <div style="display:flex; gap:0.375rem; margin-top:1rem;">
@@ -681,8 +681,8 @@ function renderStudentSheetInner(d){
         </div>
         ${!isNewStudentDraft ? `
           <div style="display:flex; gap:0.375rem; margin-top:0.5rem;">
-            <button class="btn" style="flex:1; background:#F1F3F5; color:#3A4250;" onclick="archiveStudent('${editingStudentId}')">🗄 Архив</button>
-            <button class="btn" style="flex:1; background:#FBEEEC; color:#C0392B;" onclick="deleteStudent('${editingStudentId}')">🗑 Удалить</button>
+            <button class="btn" style="flex:1; background:var(--surface); color:var(--text);" onclick="archiveStudent('${editingStudentId}')">🗄 Архив</button>
+            <button class="btn" style="flex:1; background:var(--danger-soft); color:var(--danger);" onclick="deleteStudent('${editingStudentId}')">🗑 Удалить</button>
           </div>
         ` : ''}
     `;
@@ -707,12 +707,12 @@ function renderTodayChecklist(){
           <div style="display:flex; align-items:center; gap:0.5rem;">
             <span style="width:0.5rem;height:0.5rem;border-radius:999px;background:${l.accent.ink};flex-shrink:0;"></span>
             <b style="font-size:0.875rem;">${esc(l.studentName)}</b>
-            <span style="font-size:0.8125rem; color:#5A6472;">${esc(l.time)}</span>
-            ${l.status==='pending'?'<span style="font-size:0.75rem; color:#B5651D;">(уточняется)</span>':''}
+            <span style="font-size:0.8125rem; color:var(--text-secondary);">${esc(l.time)}</span>
+            ${l.status==='pending'?'<span style="font-size:0.75rem; color:var(--warning);">(уточняется)</span>':''}
           </div>
           <div style="display:flex; gap:0.75rem; margin-top:0.375rem; font-size:0.75rem; flex-wrap:wrap;">
-            <span style="color:${materialsOk?'#2E7D4F':'#B5651D'};">${materialsOk?'✅':'⚠️'} материалы ${materialsOk?'прикреплены':'не прикреплены'}</span>
-            ${lastPast ? `<span style="color:${homeworkWasSet?'#2E7D4F':'#B5651D'};">${homeworkWasSet?'✅':'⚠️'} домашка с прошлого раза ${homeworkWasSet?'задана':'не задана'}</span>` : ''}
+            <span style="color:${materialsOk?'var(--success)':'var(--warning)'};">${materialsOk?'✅':'⚠️'} материалы ${materialsOk?'прикреплены':'не прикреплены'}</span>
+            ${lastPast ? `<span style="color:${homeworkWasSet?'var(--success)':'var(--warning)'};">${homeworkWasSet?'✅':'⚠️'} домашка с прошлого раза ${homeworkWasSet?'задана':'не задана'}</span>` : ''}
           </div>
         </div>`;
     }).join('')}
@@ -735,26 +735,26 @@ function renderOverviewView(){
     <div class="matcard">
       <div class="filelabel">Сводка</div>
       <div style="font-size:0.9375rem; font-weight:600; margin-bottom:0.25rem;">👥 ${students.length} учеников</div>
-      <div style="font-size:0.8125rem; color:#5A6472;">💻 ${online} онлайн · 🤝 ${inperson} очно</div>
-      ${gradesLine ? `<div style="font-size:0.8125rem; color:#5A6472; margin-top:0.25rem;">🏷 По классам: ${esc(gradesLine)}</div>` : ''}
-      ${subjectsLine ? `<div style="font-size:0.8125rem; color:#5A6472; margin-top:0.25rem;">📖 Предметы: ${esc(subjectsLine)}</div>` : ''}
+      <div style="font-size:0.8125rem; color:var(--text-secondary);">💻 ${online} онлайн · 🤝 ${inperson} очно</div>
+      ${gradesLine ? `<div style="font-size:0.8125rem; color:var(--text-secondary); margin-top:0.25rem;">🏷 По классам: ${esc(gradesLine)}</div>` : ''}
+      ${subjectsLine ? `<div style="font-size:0.8125rem; color:var(--text-secondary); margin-top:0.25rem;">📖 Предметы: ${esc(subjectsLine)}</div>` : ''}
     </div>
 
     ${(noAccount.length || (typeof getAllUnresolvedQuestions==='function' && getAllUnresolvedQuestions().length)) ? `
     <div class="matcard" style="margin-top:0.75rem;">
       <div style="display:flex; align-items:center; justify-content:space-between;">
         <div class="filelabel" style="margin:0;">⚠️ Требует внимания</div>
-        <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; cursor:pointer; text-decoration:underline;" onclick="showIssuesView()">Открыть всё</button>
+        <button style="font-size:0.75rem; color:var(--text-secondary); background:none; border:none; cursor:pointer; text-decoration:underline;" onclick="showIssuesView()">Открыть всё</button>
       </div>
     </div>` : ''}
 
     <div class="matcard" style="margin-top:0.75rem;">
       <div class="filelabel">Быстрые ссылки</div>
       <div style="display:flex; flex-direction:column; gap:0.5rem;">
-        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showStudentsView()">👥 Все ученики</button>
-        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showMaterialsView()">📚 Материалы</button>
-        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showFriendsView()">🤝 Друзья</button>
-        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; justify-content:flex-start;" onclick="showSettingsView()">⚙️ Настройки</button>
+        <button class="btn" style="width:100%; background:var(--surface); color:var(--text); justify-content:flex-start;" onclick="showStudentsView()">👥 Все ученики</button>
+        <button class="btn" style="width:100%; background:var(--surface); color:var(--text); justify-content:flex-start;" onclick="showMaterialsView()">📚 Материалы</button>
+        <button class="btn" style="width:100%; background:var(--surface); color:var(--text); justify-content:flex-start;" onclick="showFriendsView()">🤝 Друзья</button>
+        <button class="btn" style="width:100%; background:var(--surface); color:var(--text); justify-content:flex-start;" onclick="showSettingsView()">⚙️ Настройки</button>
       </div>
     </div>
   `;
@@ -777,15 +777,15 @@ function renderPinnedMaterialsSection(s){
   return `
     <div class="matcard" style="margin-top:0.75rem;">
       <div class="filelabel">📌 Постоянные материалы</div>
-      <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.5rem;">То, чем пользуетесь почти каждый раз — учебник, рабочая тетрадь и т.п. Всегда под рукой, не нужно искать в общем списке.</div>
-      ${pinned.length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">Пока нет закреплённых</div>' : pinned.map(m=>`
+      <div style="font-size:0.71875rem; color:var(--text-muted); margin-bottom:0.5rem;">То, чем пользуетесь почти каждый раз — учебник, рабочая тетрадь и т.п. Всегда под рукой, не нужно искать в общем списке.</div>
+      ${pinned.length===0 ? '<div style="font-size:0.78125rem;color:var(--text-muted);margin-bottom:0.5rem;">Пока нет закреплённых</div>' : pinned.map(m=>`
         <div class="filerow">
           <span>${materialIcon(m.url)}</span>
-          <a href="${esc(m.url)}" target="_blank" style="flex:1; font-size:0.8125rem; color:#2C4A7C;">${esc(m.name||m.url)}</a>
-          <button class="iconbtn" onclick="togglePinMaterial('${m.id}','${s.id}')" title="Открепить" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+          <a href="${esc(m.url)}" target="_blank" style="flex:1; font-size:0.8125rem; color:var(--accent-blue);">${esc(m.name||m.url)}</a>
+          <button class="iconbtn" onclick="togglePinMaterial('${m.id}','${s.id}')" title="Открепить" aria-label="Открепить материал" style="border-color:var(--danger-border);background:var(--danger-soft);color:var(--danger);">✕</button>
         </div>`).join('')}
       ${unpinned.length ? `
-        <div style="font-size:0.71875rem; color:#8A93A0; margin-top:0.5rem; margin-bottom:0.25rem;">Закрепить что-то из остального:</div>
+        <div style="font-size:0.71875rem; color:var(--text-faint); margin-top:0.5rem; margin-bottom:0.25rem;">Закрепить что-то из остального:</div>
         <div style="display:flex; flex-wrap:wrap; gap:0.375rem;">
           ${unpinned.map(m=>`<span class="mat-pill" onclick="togglePinMaterial('${m.id}','${s.id}')">📌 ${esc(m.name||m.url)}</span>`).join('')}
         </div>
@@ -802,24 +802,24 @@ function renderStudentFocusedDetail(s){
   return `
     ${renderPinnedMaterialsSection(s)}
     <div class="matcard" style="margin-top:0.75rem;">
-      <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250;" onclick="showMaterialsView('${s.id}')">📚 Материалы для ${esc(s.name)}</button>
+      <button class="btn" style="width:100%; background:var(--surface); color:var(--text);" onclick="showMaterialsView('${s.id}')">📚 Материалы для ${esc(s.name)}</button>
     </div>
 
     <div class="matcard" style="margin-top:0.75rem;">
       <div class="filelabel">Расписание</div>
       ${renderScheduleGroups(s)}
       ${renderUpcomingLessons(s)}
-      <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-top:0.5rem;" onclick="showCalendarView()">📅 Открыть общий календарь</button>
+      <button class="btn" style="width:100%; background:var(--surface); color:var(--text); margin-top:0.5rem;" onclick="showCalendarView()">📅 Открыть общий календарь</button>
     </div>
 
     <div class="matcard" style="margin-top:0.75rem;">
       <div class="filelabel">Журнал занятий</div>
-      ${notesList.length === 0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0;">Пока пусто — записи появятся, когда заполнишь тему/описание/домашку в подробностях занятия</div>' : notesList.map(n => `
+      ${notesList.length === 0 ? '<div style="font-size:0.8125rem;color:var(--text-muted);padding:0.375rem 0;">Пока пусто — записи появятся, когда заполнишь тему/описание/домашку в подробностях занятия</div>' : notesList.map(n => `
         <div style="padding:0.5rem 0; border-bottom:1px solid #EDEFEC;">
-          <div style="font-size:0.75rem; color:#9BA3AE; margin-bottom:0.125rem;">${esc(fmtDateRu(n.date))}</div>
+          <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.125rem;">${esc(fmtDateRu(n.date))}</div>
           ${n.topic ? `<div style="font-size:0.8125rem; font-weight:600;">${esc(n.topic)}</div>` : ''}
-          ${n.description ? `<div style="font-size:0.78125rem; color:#5A6472; margin-top:0.125rem;">${esc(n.description)}</div>` : ''}
-          ${n.homework ? `<div style="font-size:0.78125rem; color:#2C4A7C; margin-top:0.125rem;">📝 ДЗ: ${esc(n.homework)}</div>` : ''}
+          ${n.description ? `<div style="font-size:0.78125rem; color:var(--text-secondary); margin-top:0.125rem;">${esc(n.description)}</div>` : ''}
+          ${n.homework ? `<div style="font-size:0.78125rem; color:var(--accent-blue); margin-top:0.125rem;">📝 ДЗ: ${esc(n.homework)}</div>` : ''}
         </div>
       `).join('')}
     </div>

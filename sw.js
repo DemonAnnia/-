@@ -1,3 +1,6 @@
+// Благодаря network-first стратегии ниже (см. fetch-обработчик) этот номер критичен намного меньше,
+// чем раньше — свежий контент и так подтягивается при каждой загрузке, пока есть связь.
+// Поднимать стоит только если добавился/убрался файл в списке ASSETS ниже.
 const CACHE_NAME = "kabinet-repetitora-v6";
 const ASSETS = [
   "./index.html",
@@ -15,7 +18,14 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
-  self.skipWaiting();
+  // без skipWaiting() — новая версия ждёт явного согласия пользователя (баннер «Обновить»),
+  // не перехватывает страницу посреди работы без спроса
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("activate", (event) => {

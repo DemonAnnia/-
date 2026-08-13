@@ -288,7 +288,7 @@ async function addFriendMaterialToMine(friendUid, materialId){
 function accessLabel(m){
   if(m.visibleToAll) return '<span class="mat-access-chip">Все ученики</span>';
   const names = (m.studentIds||[]).map(id => { const s = data.students.find(x=>x.id===id); return s ? s.name : '?'; });
-  return names.length ? names.map(n=>`<span class="mat-access-chip">${esc(n)}</span>`).join('') : '<span class="mat-access-chip" style="background:#F6E4E1;color:#C0392B;">Только мне</span>';
+  return names.length ? names.map(n=>`<span class="mat-access-chip">${esc(n)}</span>`).join('') : '<span class="mat-access-chip" style="background:#F6E4E1;color:var(--danger);">Только мне</span>';
 }
 
 // ---- picker (кому видно) — три блока: все/только мне, по классам, по именам ----
@@ -331,7 +331,7 @@ function pickerHTML(picker, prefix){
       <span class="mat-pill ${onlyMe?'picked':''}" onclick="${prefix}TogglePickerOnlyMe()">🔒 Только мне</span>
     </div>
     ${grades.length ? `
-    <div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">По классам</div>
+    <div style="font-size:0.71875rem; color:var(--text-faint); margin-bottom:0.25rem;">По классам</div>
     <div class="mat-picker" style="margin-bottom:0.5rem;">
       ${grades.map(g => {
         const idsForGrade = data.students.filter(s=>s.grade===g).map(s=>s.id);
@@ -339,7 +339,7 @@ function pickerHTML(picker, prefix){
         return `<span class="mat-pill ${allSelected?'picked':''}" onclick="${prefix}TogglePickerGrade('${esc(g)}')">${esc(g)}</span>`;
       }).join('')}
     </div>` : ''}
-    <div style="font-size:0.71875rem; color:#8A93A0; margin-bottom:0.25rem;">По именам</div>
+    <div style="font-size:0.71875rem; color:var(--text-faint); margin-bottom:0.25rem;">По именам</div>
     <div class="mat-picker">
       ${data.students.map(s=>`<span class="mat-pill ${!allPicked && !onlyMe && picker.studentIds.includes(s.id)?'picked':''}" onclick="${prefix}TogglePickerStudent('${s.id}')">${esc(s.name)}</span>`).join('')}
     </div>
@@ -353,37 +353,37 @@ function materialCardHTML(m){
       <div class="matcard">
         <div style="display:flex; align-items:center; gap:0.5rem;">
           <span>${materialIcon(m.url)}</span>
-          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
-          <button class="iconbtn" onclick="copyText('${esc(m.url)}', this)">⧉</button>
-          <button class="iconbtn" onclick="requestDeleteMaterial('${m.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:var(--accent-blue); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
+          <button class="iconbtn" onclick="copyText('${esc(m.url)}', this)" aria-label="Скопировать ссылку">⧉</button>
+          <button class="iconbtn" onclick="requestDeleteMaterial('${m.id}')" style="border-color:var(--danger-border);background:var(--danger-soft);color:var(--danger);" aria-label="Удалить материал">✕</button>
         </div>
         ${tags.length ? `<div style="display:flex; gap:0.25rem; flex-wrap:wrap; margin-top:0.375rem;">${tags.map(t=>`<span class="mat-access-chip">${esc(t)}</span>`).join('')}</div>` : ''}
-        ${m.notes ? `<div style="font-size:0.78125rem; color:#5A6472; margin-top:0.375rem; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${esc(m.notes)}</div>` : ''}
+        ${m.notes ? `<div style="font-size:0.78125rem; color:var(--text-secondary); margin-top:0.375rem; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${esc(m.notes)}</div>` : ''}
         ${confirmDeleteFor===m.id ? `
-          <div style="margin-top:0.5rem; padding:0.625rem; border-radius:0.5rem; background:#FBEEEC;">
-            <div style="font-size:0.78125rem; color:#7A2E1E; margin-bottom:0.5rem;">Этот материал сейчас кому-то виден или скопирован коллегой. Удалить совсем, или просто спрятать (архивировать), не трогая тех, кто уже видит?</div>
+          <div style="margin-top:0.5rem; padding:0.625rem; border-radius:0.5rem; background:var(--danger-soft);">
+            <div style="font-size:0.78125rem; color:var(--warning-text); margin-bottom:0.5rem;">Этот материал сейчас кому-то виден или скопирован коллегой. Удалить совсем, или просто спрятать (архивировать), не трогая тех, кто уже видит?</div>
             <div style="display:flex; gap:0.375rem;">
               <button class="btn btn-off" style="flex:1;" onclick="archiveMaterial('${m.id}')">🗄 Архивировать</button>
-              <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="reallyDeleteMaterial('${m.id}')">Удалить всё равно</button>
+              <button class="btn" style="flex:1; background:var(--danger); color:#fff;" onclick="reallyDeleteMaterial('${m.id}')">Удалить всё равно</button>
               <button class="btn btn-off" style="flex:1;" onclick="cancelDeleteMaterial()">Отмена</button>
             </div>
           </div>
         ` : `
         <div style="margin-top:0.5rem;">
           <div>${accessLabel(m)}</div>
-          <button style="font-size:0.75rem; color:#5A6472; background:none; border:none; padding:0.25rem 0; margin-top:0.25rem; cursor:pointer; text-decoration:underline;" onclick="openEditForm('${m.id}')">✏️ Редактировать</button>
+          <button style="font-size:0.75rem; color:var(--text-secondary); background:none; border:none; padding:0.25rem 0; margin-top:0.25rem; cursor:pointer; text-decoration:underline;" onclick="openEditForm('${m.id}')">✏️ Редактировать</button>
         </div>`}
       </div>`;
 }
 function materialTileHTML(m){
   return `
     <div class="mat-tile" title="${esc(m.notes||m.name||'')}">
-      <button class="iconbtn" onclick="event.stopPropagation(); requestDeleteMaterial('${m.id}')" style="position:absolute; top:0.25rem; right:0.25rem; width:1.375rem; height:1.375rem; font-size:0.6875rem; border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+      <button class="iconbtn" onclick="event.stopPropagation(); requestDeleteMaterial('${m.id}')" aria-label="Удалить материал" style="position:absolute; top:0.25rem; right:0.25rem; width:1.375rem; height:1.375rem; font-size:0.6875rem; border-color:var(--danger-border);background:var(--danger-soft);color:var(--danger);">✕</button>
       <a href="${esc(m.url)}" target="_blank" style="text-decoration:none; color:inherit; display:flex; flex-direction:column; align-items:center; gap:0.375rem;">
         <span style="font-size:1.75rem;">${materialIcon(m.url)}</span>
-        <span style="font-size:0.71875rem; color:#3A4250; text-align:center; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.2; word-break:break-word; overflow-wrap:anywhere; width:100%;">${esc(m.name||m.url)}</span>
+        <span style="font-size:0.71875rem; color:var(--text); text-align:center; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.2; word-break:break-word; overflow-wrap:anywhere; width:100%;">${esc(m.name||m.url)}</span>
       </a>
-      <button style="width:100%; margin-top:0.375rem; font-size:0.6875rem; color:#5A6472; background:none; border:none; padding:0.125rem 0; cursor:pointer; text-decoration:underline;" onclick="openEditForm('${m.id}')">✏️</button>
+      <button style="width:100%; margin-top:0.375rem; font-size:0.6875rem; color:var(--text-secondary); background:none; border:none; padding:0.125rem 0; cursor:pointer; text-decoration:underline;" onclick="openEditForm('${m.id}')">✏️</button>
     </div>`;
 }
 function materialsInMode(items){
@@ -404,7 +404,7 @@ function renderMaterialFormSheetInner(){
   const isEdit = !!editingMaterialId;
   const editingUpload = isEdit && (data.materials||[]).find(x=>x.id===editingMaterialId)?.storage === 'timeweb';
   return `
-      <input id="matNameInput" type="text" placeholder="название" value="${esc(matNameValue)}" oninput="matNameValue=this.value" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <input id="matNameInput" type="text" placeholder="название" value="${esc(matNameValue)}" oninput="matNameValue=this.value" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.375rem;">
       ${!isEdit ? `
         <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
           <button onclick="setMatMode('link')" class="mat-pill ${matMode==='link'?'picked':''}" style="flex:1; justify-content:center;">🔗 Ссылка</button>
@@ -412,18 +412,18 @@ function renderMaterialFormSheetInner(){
         </div>
         ${matMode==='upload' ? `
           <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
-            <button type="button" onclick="document.getElementById('matFile').click()" style="padding:0.5rem 0.75rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#3A4250; font-size:0.78125rem; font-weight:600; cursor:pointer; white-space:nowrap;">📁 Выбрать файл</button>
-            <span id="matFileInfo" style="font-size:0.78125rem; color:#9BA3AE; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Файл не выбран</span>
+            <button type="button" onclick="document.getElementById('matFile').click()" style="padding:0.5rem 0.75rem; border-radius:0.5rem; border:1px solid var(--border); background:#fff; color:var(--text); font-size:0.78125rem; font-weight:600; cursor:pointer; white-space:nowrap;">📁 Выбрать файл</button>
+            <span id="matFileInfo" style="font-size:0.78125rem; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Файл не выбран</span>
           </div>
           <input type="file" id="matFile" onchange="onMatFileSelected()" style="display:none;">
-          <div style="font-size:0.71875rem; color:#9BA3AE; margin-bottom:0.375rem;">До 20 МБ. Видео сюда не грузим — для видео используй ссылку.</div>
+          <div style="font-size:0.71875rem; color:var(--text-muted); margin-bottom:0.375rem;">До 20 МБ. Видео сюда не грузим — для видео используй ссылку.</div>
         ` : `
-          <input type="text" placeholder="ссылка на файл" value="${esc(matUrlValue)}" oninput="matUrlValue=this.value" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+          <input type="text" placeholder="ссылка на файл" value="${esc(matUrlValue)}" oninput="matUrlValue=this.value" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.375rem;">
         `}
       ` : (editingUpload ? '' : `
-        <input type="text" placeholder="ссылка на файл" value="${esc(matUrlValue)}" oninput="matUrlValue=this.value" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+        <input type="text" placeholder="ссылка на файл" value="${esc(matUrlValue)}" oninput="matUrlValue=this.value" style="width:100%; font-size:0.84375rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.375rem;">
       `)}
-      <textarea placeholder="заметка / описание — необязательно" oninput="matNotesValue=this.value" style="width:100%; min-height:3.5rem; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem; resize:vertical; font-family:inherit;">${esc(matNotesValue)}</textarea>
+      <textarea placeholder="заметка / описание — необязательно" oninput="matNotesValue=this.value" style="width:100%; min-height:3.5rem; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.375rem; resize:vertical; font-family:inherit;">${esc(matNotesValue)}</textarea>
       ${allGrades.length > 0 ? `
         <div class="filelabel" style="margin-top:0.375rem;">Класс (можно несколько)</div>
         <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem; flex-wrap:wrap;">
@@ -448,7 +448,7 @@ function renderMaterialFormSheetInner(){
       </div>
       <div class="filelabel" style="margin-top:0.375rem;">Кому видно</div>
       ${pickerHTML(materialPicker, 'window.')}
-      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:#3A4250; margin:0.625rem 0;">
+      <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.75rem; color:var(--text); margin:0.625rem 0;">
         <input type="checkbox" id="matVisibleToFriends" ${matVisibleToFriendsChecked?'checked':''} onchange="matVisibleToFriendsChecked=this.checked"> Показывать друзьям-репетиторам
       </label>
       <button class="btn btn-done" style="width:100%; margin-top:0.375rem;" onclick="submitMaterialForm()">${isEdit?'✓ Сохранить':'+ Добавить'}</button>
@@ -469,7 +469,7 @@ function renderMaterialFormSheet(){
   <div class="mat-sheet">
     <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
       <div id="matSheetTitle" style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">${isEdit?'✏️ Редактировать материал':'➕ Новый материал'}</div>
-      <button class="hamburger" onclick="closeAddForm()">✕</button>
+      <button class="hamburger" onclick="closeAddForm()" aria-label="Закрыть">✕</button>
     </div>
     <div id="matSheetInner" style="padding:0 1rem 1.5rem;">${renderMaterialFormSheetInner()}</div>
   </div>`;
@@ -501,7 +501,7 @@ function renderMaterialsView(){
 
   const groupHtml = (title, icon, items) => `
     <div class="filelabel" style="margin-top:0.75rem;">${icon} ${title}</div>
-    ${items.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0;">Пока пусто</div>' : materialsInMode(items)}
+    ${items.length===0 ? '<div style="font-size:0.8125rem;color:var(--text-muted);padding:0.375rem 0;">Пока пусто</div>' : materialsInMode(items)}
   `;
   const subjectFilterHtml = profileSubjects.length > 1 ? `
     <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem; flex-wrap:wrap;">
@@ -524,7 +524,7 @@ function renderMaterialsView(){
       ${matFiltersExpanded ? `<div style="margin-top:0.5rem;">${gradeFilterHtml}${typeFilterHtml}</div>` : ''}
     </div>`;
 
-  const searchHtml = `<input type="text" placeholder="🔍 искать по названию…" value="${esc(matSearchQuery)}" oninput="setMatSearchQuery(this.value)" style="width:100%; font-size:0.875rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">`;
+  const searchHtml = `<input type="text" placeholder="🔍 искать по названию…" value="${esc(matSearchQuery)}" oninput="setMatSearchQuery(this.value)" style="width:100%; font-size:0.875rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.75rem;">`;
 
   const tabs = [
     {id:'mine', label:'Личное'},
@@ -540,18 +540,18 @@ function renderMaterialsView(){
 
   let bodyHtml;
   if(matTab === 'shared'){
-    bodyHtml = `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:#F1F3F5; color:#B7BEC7; font-size:0.8125rem; margin:0.75rem 0;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:#8A93A0; padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>`;
+    bodyHtml = `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; border-radius:0.625rem; background:var(--surface); color:var(--text-disabled); font-size:0.8125rem; margin:0.75rem 0;">🌐 Открытая библиотека материалов<span style="margin-left:auto; font-size:0.6875rem; background:#fff; color:var(--text-faint); padding:0.1rem 0.4rem; border-radius:999px;">скоро</span></div>`;
   } else if(matTab === 'friends'){
     bodyHtml = `
       <button class="btn btn-done" style="width:100%; margin-bottom:0.75rem;" onclick="openAddForm()">+ Добавить материал</button>
       ${subjectFilterHtml}${extraFiltersHtml}
-      ${friendsListFiltered.length===0 ? '<div style="font-size:0.8125rem;color:#9BA3AE;padding:0.375rem 0 0.75rem;">Пока никто ничем не поделился</div>' : friendsListFiltered.map(m => `
+      ${friendsListFiltered.length===0 ? '<div style="font-size:0.8125rem;color:var(--text-muted);padding:0.375rem 0 0.75rem;">Пока никто ничем не поделился</div>' : friendsListFiltered.map(m => `
       <div class="matcard">
         <div style="display:flex; align-items:center; gap:0.5rem;">
           <span>${materialIcon(m.url)}</span>
-          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:#2C4A7C; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
+          <a href="${esc(m.url)}" target="_blank" style="flex:1; min-width:0; font-size:0.875rem; color:var(--accent-blue); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(m.name||m.url)}</a>
         </div>
-        <div style="font-size:0.71875rem; color:#9BA3AE; margin-top:0.25rem;">от ${esc(m.__friendName||'коллеги')}</div>
+        <div style="font-size:0.71875rem; color:var(--text-muted); margin-top:0.25rem;">от ${esc(m.__friendName||'коллеги')}</div>
         <button class="btn btn-done" style="width:100%; margin-top:0.5rem;" onclick="addFriendMaterialToMine('${m.__friendUid}','${m.id}')">+ Добавить себе</button>
       </div>`).join('')}
     `;
@@ -565,9 +565,9 @@ function renderMaterialsView(){
   }
 
   return `
-    ${matStudentFilter ? `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; background:#EAF0F6; color:#2C4A7C; border-radius:0.5rem; font-size:0.8125rem; margin-bottom:0.5rem;">
+    ${matStudentFilter ? `<div style="display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.625rem; background:var(--accent-blue-soft); color:var(--accent-blue); border-radius:0.5rem; font-size:0.8125rem; margin-bottom:0.5rem;">
       Только для ${esc((data.students.find(s=>s.id===matStudentFilter)||{}).name || 'ученика')}
-      <button onclick="clearMatStudentFilter()" style="margin-left:auto; background:none; border:none; color:#2C4A7C; cursor:pointer; text-decoration:underline; font-size:0.78125rem;">показать все</button>
+      <button onclick="clearMatStudentFilter()" style="margin-left:auto; background:none; border:none; color:var(--accent-blue); cursor:pointer; text-decoration:underline; font-size:0.78125rem;">показать все</button>
     </div>` : ''}
     ${searchHtml}
     ${tabsHtml}

@@ -6,7 +6,7 @@ function renderTutorSwitcher(){
   if(!el) return;
   if(allTutorLinks.length <= 1){ el.innerHTML = ''; return; }
   el.innerHTML = `<div style="display:flex; gap:0.375rem; flex-wrap:wrap;">
-    ${allTutorLinks.map((l,i) => `<button onclick="switchTutorLink(${i})" style="padding:0.375rem 0.75rem; border-radius:999px; border:1px solid ${i===activeLinkIndex?'#1F2A3D':'#C9D2DB'}; background:${i===activeLinkIndex?'#1F2A3D':'#fff'}; color:${i===activeLinkIndex?'#fff':'#5A6472'}; font-size:0.78125rem; font-weight:600; cursor:pointer;">Ты у ${esc(l.label || 'репетитора')}</button>`).join('')}
+    ${allTutorLinks.map((l,i) => `<button onclick="switchTutorLink(${i})" style="padding:0.375rem 0.75rem; border-radius:999px; border:1px solid ${i===activeLinkIndex?'var(--ink)':'var(--border)'}; background:${i===activeLinkIndex?'var(--ink)':'#fff'}; color:${i===activeLinkIndex?'#fff':'var(--text-secondary)'}; font-size:0.78125rem; font-weight:600; cursor:pointer;">Ты у ${esc(l.label || 'репетитора')}</button>`).join('')}
   </div>`;
 }
 function switchTutorLink(i){

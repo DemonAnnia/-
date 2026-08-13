@@ -4,9 +4,9 @@
 let reschedulingLesson = null; // { studentId, date } когда открыта форма переноса
 
 function statusLabel(l){
-  if(l.status === 'pending') return `<span style="color:#B5651D;">уточняется${l.breakLabel?` (${esc(l.breakLabel)})`:''}</span>`;
-  if(l.status === 'skipped') return `<span style="color:#9BA3AE;">пропущено</span>`;
-  return `<span style="color:#2E7D4F;">подтверждено</span>`;
+  if(l.status === 'pending') return `<span style="color:var(--warning);">уточняется${l.breakLabel?` (${esc(l.breakLabel)})`:''}</span>`;
+  if(l.status === 'skipped') return `<span style="color:var(--text-muted);">пропущено</span>`;
+  return `<span style="color:var(--success);">подтверждено</span>`;
 }
 
 function renderLessonRow(s, l){
@@ -16,14 +16,14 @@ function renderLessonRow(s, l){
       <span>📅</span>
       <span style="flex:1; font-size:0.8125rem;">${esc(fmtDateRu(l.date))} · ${esc(l.time)} — ${statusLabel(l)}</span>
       ${l.status !== 'skipped' ? `
-        <button class="iconbtn" onclick="openRescheduleForm('${s.id}','${l.date}')" title="Перенести">↪️</button>
-        <button class="iconbtn" onclick="cancelLessonDate('${s.id}','${l.date}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;" title="Отменить">✕</button>
+        <button class="iconbtn" onclick="openRescheduleForm('${s.id}','${l.date}')" title="Перенести" aria-label="Перенести занятие">↪️</button>
+        <button class="iconbtn" onclick="cancelLessonDate('${s.id}','${l.date}')" style="border-color:var(--danger-border);background:var(--danger-soft);color:var(--danger);" title="Отменить" aria-label="Отменить занятие">✕</button>
       ` : ''}
     </div>
     ${isReschedForm ? `
       <div style="width:100%; display:flex; gap:0.375rem; margin:0.375rem 0; padding-left:1.5rem;">
-        <input type="date" id="reschedDate-${s.id}" value="${esc(l.date)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-        <input type="time" id="reschedTime-${s.id}" value="${esc(l.time)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <input type="date" id="reschedDate-${s.id}" value="${esc(l.date)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
+        <input type="time" id="reschedTime-${s.id}" value="${esc(l.time)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
         <button class="btn btn-done" onclick="confirmReschedule('${s.id}','${l.date}')">✓</button>
         <button class="btn btn-off" onclick="cancelRescheduleForm()">✕</button>
       </div>
@@ -38,7 +38,7 @@ function renderUpcomingLessons(s){
   if((s.scheduleRules||[]).length === 0) return '';
   return `
     <div class="filelabel" style="margin-top:0.75rem;">Ближайшие занятия (14 дней)</div>
-    ${lessons.length === 0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">На этот срок ничего не выпадает</div>' : lessons.map(l => renderLessonRow(s, l)).join('')}
+    ${lessons.length === 0 ? '<div style="font-size:0.78125rem;color:var(--text-muted);margin-bottom:0.5rem;">На этот срок ничего не выпадает</div>' : lessons.map(l => renderLessonRow(s, l)).join('')}
   `;
 }
 
@@ -95,10 +95,10 @@ function renderBreakFormInner(){
         ${data.students.filter(s=>!s.archived).map(s=>`<span class="mat-pill ${breakStudentIds.includes(s.id)?'picked':''}" onclick="toggleBreakStudent('${s.id}')">${esc(s.name)}</span>`).join('')}
       </div>
       <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-        <input type="date" id="breakFrom" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-        <input type="date" id="breakTo" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <input type="date" id="breakFrom" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
+        <input type="date" id="breakTo" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
       </div>
-      <input type="text" id="breakLabelInput" placeholder="подпись (например, Осенние каникулы)" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.375rem;">
+      <input type="text" id="breakLabelInput" placeholder="подпись (например, Осенние каникулы)" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.375rem;">
       <button class="btn btn-done" style="width:100%;" onclick="submitBreakForm()">+ Добавить</button>
   `;
 }
@@ -109,7 +109,7 @@ function renderBreakSheet(){
   <div class="mat-sheet">
     <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
       <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">🏖 Добавить каникулы</div>
-      <button class="hamburger" onclick="closeBreakSheet()">✕</button>
+      <button class="hamburger" onclick="closeBreakSheet()" aria-label="Закрыть">✕</button>
     </div>
     <div id="breakSheetInner" style="padding:0 1rem 1.5rem;">${renderBreakFormInner()}</div>
   </div>`;
@@ -173,15 +173,15 @@ function renderDayOffSheet(){
   <div class="mat-sheet">
     <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
       <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">🚫 Отметить недоступность</div>
-      <button class="hamburger" onclick="closeDayOffSheet()">✕</button>
+      <button class="hamburger" onclick="closeDayOffSheet()" aria-label="Закрыть">✕</button>
     </div>
     <div style="padding:0 1rem 1.5rem;">
-      <div style="font-size:0.78125rem; color:#9BA3AE; margin-bottom:0.5rem;">Занятия у всех учеников в этот диапазон сразу считаются отменёнными — без «уточняется», решать нечего.</div>
+      <div style="font-size:0.78125rem; color:var(--text-muted); margin-bottom:0.5rem;">Занятия у всех учеников в этот диапазон сразу считаются отменёнными — без «уточняется», решать нечего.</div>
       <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-        <input type="date" id="dayOffFrom" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-        <input type="date" id="dayOffTo" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+        <input type="date" id="dayOffFrom" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
+        <input type="date" id="dayOffTo" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
       </div>
-      <input type="text" id="dayOffLabelInput" placeholder="подпись (необязательно, например Отпуск)" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+      <input type="text" id="dayOffLabelInput" placeholder="подпись (необязательно, например Отпуск)" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.5rem;">
       <button class="btn btn-done" style="width:100%;" onclick="submitDayOffForm()">+ Отметить</button>
       ${(window.__daysOff||[]).length ? `
         <div class="filelabel" style="margin-top:0.75rem;">Уже отмечено</div>
@@ -189,7 +189,7 @@ function renderDayOffSheet(){
           <div class="filerow">
             <span>🚫</span>
             <span style="flex:1; font-size:0.8125rem;">${esc(fmtDateRu(d.from))} — ${esc(fmtDateRu(d.to))}${d.label?` · ${esc(d.label)}`:''}</span>
-            <button class="iconbtn" onclick="window.__fbDeleteDayOff('${d.id}')" style="border-color:#F0DAD6;background:#FBEEEC;color:#C0392B;">✕</button>
+            <button class="iconbtn" onclick="window.__fbDeleteDayOff('${d.id}')" aria-label="Убрать выходной" style="border-color:var(--danger-border);background:var(--danger-soft);color:var(--danger);">✕</button>
           </div>`).join('')}
       ` : ''}
     </div>
@@ -252,7 +252,7 @@ function getFilteredLessonsInRange(dateFromStr, dateToStr){
 
 function renderCalendarFilterHTML(){
   const students = (data.students||[]).filter(s=>!s.archived);
-  return `<select onchange="setCalendarFilter(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
+  return `<select onchange="setCalendarFilter(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.75rem;">
     <option value="all" ${calendarFilterValue==='all'?'selected':''}>📅 Мой общий календарь</option>
     <optgroup label="По ученику">
       ${students.map(s=>`<option value="student:${s.id}" ${calendarFilterValue==='student:'+s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
@@ -287,7 +287,7 @@ function renderMonthGrid(){
         <div class="cal-daynum">${day}${dayOff?' 🚫':''}</div>
         <div class="cal-chips">
           ${dayLessons.slice(0,4).map(l=>`<span class="cal-chip" style="background:${l.accent.ink};" title="${esc(l.studentName)} · ${esc(l.time)}">${esc((l.studentName||'?').trim().charAt(0).toUpperCase())}</span>`).join('')}
-          ${dayLessons.length>4 ? `<span style="font-size:0.5rem;color:#9BA3AE;">+${dayLessons.length-4}</span>` : ''}
+          ${dayLessons.length>4 ? `<span style="font-size:0.5rem;color:var(--text-muted);">+${dayLessons.length-4}</span>` : ''}
         </div>
       </div>`);
   }
@@ -297,9 +297,9 @@ function renderMonthGrid(){
   return `
     <div class="matcard">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
-        <button class="iconbtn" onclick="shiftCalendarMonth(-1)">←</button>
+        <button class="iconbtn" onclick="shiftCalendarMonth(-1)" aria-label="Предыдущий месяц">←</button>
         <div style="font-weight:700; text-transform:capitalize; font-size:0.9375rem;">${calendarViewDate.toLocaleDateString('ru-RU',{month:'long', year:'numeric'})}</div>
-        <button class="iconbtn" onclick="shiftCalendarMonth(1)">→</button>
+        <button class="iconbtn" onclick="shiftCalendarMonth(1)" aria-label="Следующий месяц">→</button>
       </div>
       <div class="cal-grid cal-grid-header">
         ${DAY_ORDER.map(dow=>`<div class="cal-cell-label">${DAY_NAMES[dow]}</div>`).join('')}
@@ -319,7 +319,7 @@ function renderNextLessonLine(){
     return dt.getTime() >= now.getTime() - 30*60000;
   });
   if(!upcoming){
-    return `<div class="matcard" style="text-align:center; color:#9BA3AE; font-size:0.8125rem; margin-top:0.75rem;">Занятий не запланировано</div>`;
+    return `<div class="matcard" style="text-align:center; color:var(--text-muted); font-size:0.8125rem; margin-top:0.75rem;">Занятий не запланировано</div>`;
   }
   const dt = new Date(upcoming.date + 'T' + (upcoming.time||'00:00'));
   const diffMs = dt.getTime() - now.getTime();
@@ -331,7 +331,7 @@ function renderNextLessonLine(){
   else whenLabel = `через ${Math.round(diffHrs/24)} дн`;
   return `<div class="matcard" style="display:flex; align-items:center; gap:0.625rem; margin-top:0.75rem;">
     <span style="font-size:1.375rem;">⏰</span>
-    <div style="flex:1; font-size:0.875rem;"><b>${esc(whenLabel)}</b> — ${esc(upcoming.studentName)}, ${esc(upcoming.format||'')}, ${esc(upcoming.time)}${upcoming.status==='pending'?' <span style="color:#B5651D;">(уточняется)</span>':''}</div>
+    <div style="flex:1; font-size:0.875rem;"><b>${esc(whenLabel)}</b> — ${esc(upcoming.studentName)}, ${esc(upcoming.format||'')}, ${esc(upcoming.time)}${upcoming.status==='pending'?' <span style="color:var(--warning);">(уточняется)</span>':''}</div>
   </div>`;
 }
 
@@ -355,9 +355,9 @@ function renderWeekGrid(){
         const dayLessons = (byDate[dateStr]||[]).sort((a,b)=>a.time.localeCompare(b.time));
         const isToday = dateStr === todayStr;
         const dayOff = isDayOff(dateStr);
-        return `<div class="matcard" style="min-width:8rem; flex-shrink:0; ${dayOff?'background:#2D2D2D; color:#fff;':''} ${isToday && !dayOff?'border:1.5px solid #1F2A3D;':''}">
-          <div style="font-size:0.71875rem; color:${dayOff?'#C9D2DB':'#9BA3AE'}; margin-bottom:0.375rem;">${DAY_NAMES[DAY_ORDER[i]]}, ${d.getDate()}</div>
-          ${dayOff ? '<div style="font-size:0.75rem;">🚫 Выходной</div>' : (dayLessons.length===0 ? '<div style="font-size:0.75rem;color:#C9D2DB;">—</div>' : dayLessons.map(l=>`
+        return `<div class="matcard" style="min-width:8rem; flex-shrink:0; ${dayOff?'background:var(--charcoal); color:#fff;':''} ${isToday && !dayOff?'border:1.5px solid var(--ink);':''}">
+          <div style="font-size:0.71875rem; color:${dayOff?'var(--border)':'var(--text-muted)'}; margin-bottom:0.375rem;">${DAY_NAMES[DAY_ORDER[i]]}, ${d.getDate()}</div>
+          ${dayOff ? '<div style="font-size:0.75rem;">🚫 Выходной</div>' : (dayLessons.length===0 ? '<div style="font-size:0.75rem;color:var(--border);">—</div>' : dayLessons.map(l=>`
             <div onclick="showDayLessons('${dateStr}')" style="display:flex; align-items:center; gap:0.375rem; padding:0.1875rem 0; cursor:pointer;">
               <span style="width:0.4375rem;height:0.4375rem;border-radius:999px;background:${l.accent.ink};flex-shrink:0;"></span>
               <span style="font-size:0.75rem;">${esc(l.time)} ${esc(l.studentName)}</span>
@@ -508,7 +508,7 @@ function renderDaySheetInner(){
     return `
       <div class="filelabel">Занятия ${esc(fmtDateRu(daySheetDate))}</div>
       ${dayLessons.map(l => `
-        <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-bottom:0.375rem; justify-content:flex-start;" onclick="openLessonDetail('${l.studentId}')">
+        <button class="btn" style="width:100%; background:var(--surface); color:var(--text); margin-bottom:0.375rem; justify-content:flex-start;" onclick="openLessonDetail('${l.studentId}')">
           <span style="width:0.5rem;height:0.5rem;border-radius:999px;background:${l.accent.ink};margin-right:0.5rem; flex-shrink:0;"></span>
           ${esc(l.studentName)} · ${esc(l.time)}
         </button>`).join('')}
@@ -522,19 +522,19 @@ function renderDaySheetInner(){
 
   return `
     ${dayLessons.length > 1 ? `<button class="hamburger" onclick="backToDayList()" style="margin-bottom:0.5rem;" title="Все занятия этого дня">←</button>` : ''}
-    <div style="font-weight:700; font-size:0.9375rem; margin-bottom:0.75rem;">${esc(student?student.name:'')} · ${esc(lesson?lesson.time:'')}${lesson&&lesson.status==='pending'?' <span style="color:#B5651D; font-weight:400; font-size:0.8125rem;">(уточняется)</span>':''}</div>
+    <div style="font-weight:700; font-size:0.9375rem; margin-bottom:0.75rem;">${esc(student?student.name:'')} · ${esc(lesson?lesson.time:'')}${lesson&&lesson.status==='pending'?' <span style="color:var(--warning); font-weight:400; font-size:0.8125rem;">(уточняется)</span>':''}</div>
 
     <div class="filelabel">Тема занятия</div>
-    <input id="lessonTopicInput" type="text" value="${esc(d.topic)}" placeholder="например, Квадратные уравнения" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+    <input id="lessonTopicInput" type="text" value="${esc(d.topic)}" placeholder="например, Квадратные уравнения" style="width:100%; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.5rem;">
 
     <div class="filelabel">Описание</div>
-    <textarea id="lessonDescInput" placeholder="что разбирали, как прошло" style="width:100%; min-height:3.5rem; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem; font-family:inherit; resize:vertical;">${esc(d.description)}</textarea>
+    <textarea id="lessonDescInput" placeholder="что разбирали, как прошло" style="width:100%; min-height:3.5rem; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.5rem; font-family:inherit; resize:vertical;">${esc(d.description)}</textarea>
 
     <div class="filelabel">Домашнее задание</div>
-    <textarea id="lessonHomeworkInput" placeholder="что задано на дом" style="width:100%; min-height:3.5rem; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem; font-family:inherit; resize:vertical;">${esc(d.homework)}</textarea>
+    <textarea id="lessonHomeworkInput" placeholder="что задано на дом" style="width:100%; min-height:3.5rem; font-size:0.8125rem; padding:0.4375rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.5rem; font-family:inherit; resize:vertical;">${esc(d.homework)}</textarea>
 
     <div class="filelabel">Материалы к уроку</div>
-    ${materials.length===0 ? '<div style="font-size:0.78125rem;color:#9BA3AE;margin-bottom:0.5rem;">У ученика пока нет материалов — добавь в разделе «Материалы»</div>' : `
+    ${materials.length===0 ? '<div style="font-size:0.78125rem;color:var(--text-muted);margin-bottom:0.5rem;">У ученика пока нет материалов — добавь в разделе «Материалы»</div>' : `
       <div style="display:flex; flex-direction:column; gap:0.25rem; margin-bottom:0.5rem;">
         ${materials.map(m => `
           <label style="display:flex; align-items:center; gap:0.375rem; font-size:0.78125rem; cursor:pointer;">
@@ -560,17 +560,17 @@ function renderDaySheetInner(){
     ${lesson && lesson.status !== 'skipped' ? `
       <div class="filelabel">Это занятие</div>
       ${confirmEndRecurrence ? `
-        <div style="padding:0.625rem; background:#FBEEEC; border-radius:0.625rem; margin-bottom:0.375rem;">
-          <div style="font-size:0.78125rem; color:#7A2E1E; margin-bottom:0.5rem;">Это занятие останется последним — дальше по этому правилу занятия перестанут появляться (прошлые не трогаем). Точно?</div>
+        <div style="padding:0.625rem; background:var(--danger-soft); border-radius:0.625rem; margin-bottom:0.375rem;">
+          <div style="font-size:0.78125rem; color:var(--warning-text); margin-bottom:0.5rem;">Это занятие останется последним — дальше по этому правилу занятия перестанут появляться (прошлые не трогаем). Точно?</div>
           <div style="display:flex; gap:0.375rem;">
-            <button class="btn" style="flex:1; background:#C0392B; color:#fff;" onclick="confirmEndRecurrenceHere()">Да, закончить здесь</button>
+            <button class="btn" style="flex:1; background:var(--danger); color:#fff;" onclick="confirmEndRecurrenceHere()">Да, закончить здесь</button>
             <button class="btn btn-off" style="flex:1;" onclick="cancelEndRecurrence()">Отмена</button>
           </div>
         </div>
       ` : showRescheduleInDaySheet ? `
         <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-          <input type="date" id="daySheetReschedDate" value="${esc(daySheetDate)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-          <input type="time" id="daySheetReschedTime" value="${esc(lesson.time)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+          <input type="date" id="daySheetReschedDate" value="${esc(daySheetDate)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
+          <input type="time" id="daySheetReschedTime" value="${esc(lesson.time)}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
         </div>
         <div style="display:flex; gap:0.375rem;">
           <button class="btn btn-done" style="flex:1;" onclick="confirmRescheduleFromDaySheet()">✓ Перенести</button>
@@ -578,11 +578,11 @@ function renderDaySheetInner(){
         </div>
       ` : `
         <div style="display:flex; gap:0.375rem; margin-bottom:0.375rem;">
-          <button class="btn" style="flex:1; background:#F1F3F5; color:#3A4250;" onclick="openRescheduleFromDaySheet()">↪️ Перенести</button>
-          <button class="btn" style="flex:1; background:#FBEEEC; color:#C0392B;" onclick="cancelLessonFromDaySheet()">✕ Отменить</button>
+          <button class="btn" style="flex:1; background:var(--surface); color:var(--text);" onclick="openRescheduleFromDaySheet()">↪️ Перенести</button>
+          <button class="btn" style="flex:1; background:var(--danger-soft); color:var(--danger);" onclick="cancelLessonFromDaySheet()">✕ Отменить</button>
         </div>
         ${lesson.source === 'rule' ? `
-          <button class="btn" style="width:100%; background:#F6F7F5; color:#5A6472;" onclick="requestEndRecurrence()">🛑 Закончить серию здесь — дальше не повторять</button>
+          <button class="btn" style="width:100%; background:var(--bg-alt); color:var(--text-secondary);" onclick="requestEndRecurrence()">🛑 Закончить серию здесь — дальше не повторять</button>
         ` : ''}
       `}
     ` : ''}
@@ -595,7 +595,7 @@ function renderDaySheet(){
   <div class="mat-sheet">
     <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
       <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">📅 ${esc(fmtDateRu(daySheetDate)||'')}</div>
-      <button class="hamburger" onclick="closeDaySheet()">✕</button>
+      <button class="hamburger" onclick="closeDaySheet()" aria-label="Закрыть">✕</button>
     </div>
     <div id="daySheetInner" style="padding:0 1rem 1.5rem;">${renderDaySheetInner()}</div>
   </div>`;
@@ -669,7 +669,7 @@ function renderAddLessonSheetInner(){
   const todayStr = addLessonPrefilledDate || fmtDate(new Date());
   return `
       <div class="filelabel">Ученик</div>
-      <select onchange="setAddLessonStudent(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.75rem;">
+      <select onchange="setAddLessonStudent(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.75rem;">
         <option value="">— выбери —</option>
         ${(data.students||[]).filter(s=>!s.archived).map(s=>`<option value="${s.id}" ${addLessonStudentId===s.id?'selected':''}>${esc(s.name)}</option>`).join('')}
       </select>
@@ -677,13 +677,13 @@ function renderAddLessonSheetInner(){
         <div class="filelabel">Дата и время</div>
         <div style="display:flex; gap:0.375rem; margin-bottom:0.5rem;">
           ${addLessonRepeat === 'custom'
-            ? `<input type="date" id="addLessonStart" value="${todayStr}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">`
-            : `<input type="date" id="addLessonDate" value="${todayStr}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">`}
-          <input type="time" id="addLessonTime" value="16:00" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
+            ? `<input type="date" id="addLessonStart" value="${todayStr}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">`
+            : `<input type="date" id="addLessonDate" value="${todayStr}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">`}
+          <input type="time" id="addLessonTime" value="16:00" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
         </div>
 
         <div class="filelabel">Повторение</div>
-        <select onchange="setAddLessonRepeat(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+        <select onchange="setAddLessonRepeat(this.value)" style="width:100%; font-size:0.8125rem; padding:0.5rem 0.625rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.5rem;">
           <option value="none" ${addLessonRepeat==='none'?'selected':''}>Не повторяется — только эта дата</option>
           <option value="weekly" ${addLessonRepeat==='weekly'?'selected':''}>Каждую неделю, в этот же день</option>
           <option value="custom" ${addLessonRepeat==='custom'?'selected':''}>Каждую неделю, выбрать дни</option>
@@ -696,9 +696,9 @@ function renderAddLessonSheetInner(){
         ` : ''}
 
         ${(student.subjects||[]).length===0 ? `
-          <div style="font-size:0.78125rem; color:#9BA3AE; margin-bottom:0.5rem;">У этого ученика пока нет тарифов — можно добавить занятие без привязки к тарифу</div>
+          <div style="font-size:0.78125rem; color:var(--text-muted); margin-bottom:0.5rem;">У этого ученика пока нет тарифов — можно добавить занятие без привязки к тарифу</div>
         ` : `
-          <select id="addLessonTariff" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB; margin-bottom:0.5rem;">
+          <select id="addLessonTariff" style="width:100%; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border); margin-bottom:0.5rem;">
             <option value="">без привязки к тарифу</option>
             ${student.subjects.map(sub=>`<option value="${sub.id}">${esc(sub.label)} · ${tariffLabel(sub)}</option>`).join('')}
           </select>
@@ -714,7 +714,7 @@ function renderAddLessonSheet(){
   <div class="mat-sheet">
     <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1rem 0.5rem;">
       <div style="font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:1.0625rem;">➕ Добавить занятие</div>
-      <button class="hamburger" onclick="closeAddLessonSheet()">✕</button>
+      <button class="hamburger" onclick="closeAddLessonSheet()" aria-label="Закрыть">✕</button>
     </div>
     <div id="addLessonSheetInner" style="padding:0 1rem 1.5rem;">${renderAddLessonSheetInner()}</div>
   </div>`;
@@ -734,8 +734,8 @@ function renderCalendarView(){
     ${renderWeekGrid()}
     <div class="filelabel" style="margin-top:1rem;">Действия</div>
     <button class="btn btn-done" style="width:100%; margin-bottom:0.5rem;" onclick="openAddLessonSheet()">+ Добавить занятие</button>
-    <button class="btn" style="width:100%; background:#F1F3F5; color:#3A4250; margin-bottom:0.5rem;" onclick="openBreakSheet()">🏖 Добавить каникулы</button>
-    <button class="btn" style="width:100%; background:#2D2D2D; color:#fff;" onclick="openDayOffSheet()">🚫 Отметить недоступность</button>
+    <button class="btn" style="width:100%; background:var(--surface); color:var(--text); margin-bottom:0.5rem;" onclick="openBreakSheet()">🏖 Добавить каникулы</button>
+    <button class="btn" style="width:100%; background:var(--charcoal); color:#fff;" onclick="openDayOffSheet()">🚫 Отметить недоступность</button>
     ${renderAddLessonSheet()}
     ${renderBreakSheet()}
     ${renderDayOffSheet()}

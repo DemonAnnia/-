@@ -29,18 +29,18 @@ function timeAgoLabel(iso){
 function renderNotificationsView(){
   const items = window.__notifications || [];
   if(items.length === 0){
-    return `<div class="matcard" style="text-align:center; padding:1.5rem 1rem; color:#5A6472;">
+    return `<div class="matcard" style="text-align:center; padding:1.5rem 1rem; color:var(--text-secondary);">
       <div style="font-size:1.5rem; margin-bottom:0.375rem;">🔔</div>
       <div style="font-size:0.875rem;">Уведомлений пока не было</div>
     </div>`;
   }
   return items.map(n => `
-    <div class="matcard" style="${n.read?'':'border-left:3px solid #C0392B;'}">
+    <div class="matcard" style="${n.read?'':'border-left:3px solid var(--danger);'}">
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.5rem;">
         <div style="font-weight:600; font-size:0.875rem;">${esc(n.title||'Уведомление')}</div>
-        <div style="font-size:0.71875rem; color:#9BA3AE; flex-shrink:0;">${timeAgoLabel(n.createdAt)}</div>
+        <div style="font-size:0.71875rem; color:var(--text-muted); flex-shrink:0;">${timeAgoLabel(n.createdAt)}</div>
       </div>
-      <div style="font-size:0.8125rem; color:#5A6472; margin-top:0.25rem;">${esc(n.body||'')}</div>
+      <div style="font-size:0.8125rem; color:var(--text-secondary); margin-top:0.25rem;">${esc(n.body||'')}</div>
     </div>
   `).join('');
 }

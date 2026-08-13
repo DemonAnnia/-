@@ -165,6 +165,27 @@
       navigator.serviceWorker.register("../sw.js").then((reg) => {
         reg.update();
         setInterval(() => reg.update(), 60000);
+        if (reg.waiting) showSwUpdateBanner(reg.waiting);
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showSwUpdateBanner(newWorker);
+            }
+          });
+        });
       }).catch(() => {});
     });
+  }
+  function showSwUpdateBanner(worker){
+    if (document.getElementById('swUpdateBanner')) return;
+    const banner = document.createElement('div');
+    banner.id = 'swUpdateBanner';
+    banner.style.cssText = 'position:fixed; bottom:0; left:0; right:0; background:#1F2A3D; color:#fff; padding:0.75rem 1rem; display:flex; align-items:center; gap:0.75rem; z-index:999; font-size:0.875rem; box-shadow:0 -2px 12px rgba(0,0,0,0.15);';
+    banner.innerHTML = '<span style="flex:1;">Доступна новая версия приложения</span><button id="swUpdateBtn" style="background:#fff; color:#1F2A3D; border:none; border-radius:0.5rem; padding:0.375rem 0.75rem; font-weight:600; cursor:pointer;">Обновить</button>';
+    document.body.appendChild(banner);
+    document.getElementById('swUpdateBtn').onclick = () => {
+      worker.postMessage({ type: 'SKIP_WAITING' });
+    };
   }

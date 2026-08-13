@@ -47,7 +47,7 @@ const THEMES = {
 function themePickerHTML(currentTheme, onClickFn){
   return `<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
     ${Object.entries(THEMES).map(([id, t]) => `
-      <button onclick="${onClickFn}('${id}')" title="${t.name}" style="width:2.25rem; height:2.25rem; border-radius:999px; border:2px solid ${currentTheme===id?'#1F2A3D':'transparent'}; background:${t.accent}; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+      <button onclick="${onClickFn}('${id}')" title="${t.name}" style="width:2.25rem; height:2.25rem; border-radius:999px; border:2px solid ${currentTheme===id?'var(--ink)':'transparent'}; background:${t.accent}; display:flex; align-items:center; justify-content:center; cursor:pointer;">
         ${currentTheme===id ? '<span style="color:#fff; font-size:0.875rem;">✓</span>' : ''}
       </button>`).join('')}
   </div>`;
@@ -258,10 +258,10 @@ function compactContactGridHTML(namespace){
     return `
       <div style="display:flex; align-items:center; gap:0.375rem; margin-bottom:0.375rem;">
         <span style="font-size:0.9375rem; flex-shrink:0;">${t ? t.icon : '💬'}</span>
-        <button onclick="setContactPrimary('${namespace}','${c.id}')" title="Сделать основным" style="width:1.375rem; height:1.375rem; border-radius:999px; border:1px solid ${primaryId===c.id?'#F0B429':'#C9D2DB'}; background:${primaryId===c.id?'#FEF3D6':'#fff'}; color:${primaryId===c.id?'#B8860B':'#C9D2DB'}; font-size:0.75rem; cursor:pointer; flex-shrink:0;">★</button>
-        <span style="flex:1; min-width:0; font-size:0.8125rem; color:#3A4250; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c.value)}</span>
-        <a href="${contactLink(c)}" target="_blank" style="font-size:0.71875rem; color:#2C4A7C; flex-shrink:0;">проверить</a>
-        <button onclick="removeContactGeneric('${namespace}','${c.id}')" style="width:1.5rem; height:1.5rem; border-radius:0.375rem; border:1px solid #F0DAD6; background:#FBEEEC; color:#C0392B; cursor:pointer; flex-shrink:0;">✕</button>
+        <button onclick="setContactPrimary('${namespace}','${c.id}')" title="Сделать основным" style="width:1.375rem; height:1.375rem; border-radius:999px; border:1px solid ${primaryId===c.id?'#F0B429':'var(--border)'}; background:${primaryId===c.id?'#FEF3D6':'#fff'}; color:${primaryId===c.id?'#B8860B':'var(--border)'}; font-size:0.75rem; cursor:pointer; flex-shrink:0;">★</button>
+        <span style="flex:1; min-width:0; font-size:0.8125rem; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(c.value)}</span>
+        <a href="${contactLink(c)}" target="_blank" style="font-size:0.71875rem; color:var(--accent-blue); flex-shrink:0;">проверить</a>
+        <button onclick="removeContactGeneric('${namespace}','${c.id}')" style="width:1.5rem; height:1.5rem; border-radius:0.375rem; border:1px solid var(--danger-border); background:var(--danger-soft); color:var(--danger); cursor:pointer; flex-shrink:0;">✕</button>
       </div>`;
   }).join('');
 
@@ -270,20 +270,20 @@ function compactContactGridHTML(namespace){
     const t = CONTACT_TYPES[state.type];
     addUI = `<div style="display:flex; gap:0.375rem; align-items:center; margin-top:0.375rem;">
       <span style="font-size:0.9375rem; flex-shrink:0;">${t.icon}</span>
-      <input id="contactAddInput-${namespace}" type="text" placeholder="${t.placeholder}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid #C9D2DB;">
-      <button onclick="confirmAddContact('${namespace}')" style="width:1.875rem; border-radius:0.5rem; border:none; background:#1F2A3D; color:#fff; cursor:pointer; flex-shrink:0;">✓</button>
-      <button onclick="cancelAddContact('${namespace}')" style="width:1.875rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer; flex-shrink:0;">✕</button>
+      <input id="contactAddInput-${namespace}" type="text" placeholder="${t.placeholder}" style="flex:1; font-size:0.78125rem; padding:0.375rem 0.5rem; border-radius:0.5rem; border:1px solid var(--border);">
+      <button onclick="confirmAddContact('${namespace}')" style="width:1.875rem; border-radius:0.5rem; border:none; background:var(--ink); color:#fff; cursor:pointer; flex-shrink:0;">✓</button>
+      <button onclick="cancelAddContact('${namespace}')" style="width:1.875rem; border-radius:0.5rem; border:1px solid var(--border); background:#fff; color:var(--text-secondary); cursor:pointer; flex-shrink:0;">✕</button>
     </div>`;
   } else if(state.step === 'choosing'){
     addUI = `<div style="display:flex; gap:0.375rem; margin-top:0.375rem; flex-wrap:wrap;">
-      ${CONTACT_TYPE_ORDER.map(type=>`<button onclick="chooseContactType('${namespace}','${type}')" title="${CONTACT_TYPES[type].label}" style="width:2rem; height:2rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; cursor:pointer; font-size:1rem;">${CONTACT_TYPES[type].icon}</button>`).join('')}
-      <button onclick="cancelAddContact('${namespace}')" style="width:2rem; height:2rem; border-radius:0.5rem; border:1px solid #C9D2DB; background:#fff; color:#5A6472; cursor:pointer;">✕</button>
+      ${CONTACT_TYPE_ORDER.map(type=>`<button onclick="chooseContactType('${namespace}','${type}')" title="${CONTACT_TYPES[type].label}" style="width:2rem; height:2rem; border-radius:0.5rem; border:1px solid var(--border); background:#fff; cursor:pointer; font-size:1rem;">${CONTACT_TYPES[type].icon}</button>`).join('')}
+      <button onclick="cancelAddContact('${namespace}')" style="width:2rem; height:2rem; border-radius:0.5rem; border:1px solid var(--border); background:#fff; color:var(--text-secondary); cursor:pointer;">✕</button>
     </div>`;
   } else {
-    addUI = `<button onclick="startAddContact('${namespace}')" style="font-size:0.78125rem; color:#2C4A7C; background:none; border:1px dashed #C9D2DB; border-radius:0.5rem; padding:0.375rem 0.75rem; cursor:pointer; margin-top:0.25rem;">+ Добавить контакт</button>`;
+    addUI = `<button onclick="startAddContact('${namespace}')" style="font-size:0.78125rem; color:var(--accent-blue); background:none; border:1px dashed var(--border); border-radius:0.5rem; padding:0.375rem 0.75rem; cursor:pointer; margin-top:0.25rem;">+ Добавить контакт</button>`;
   }
 
-  return `<div>${rows}${rows===''?'<div style="font-size:0.75rem;color:#9BA3AE;margin-bottom:0.25rem;">Пока пусто</div>':''}${addUI}</div>`;
+  return `<div>${rows}${rows===''?'<div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.25rem;">Пока пусто</div>':''}${addUI}</div>`;
 }
 
 function startAddContact(namespace){
